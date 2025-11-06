@@ -1,0 +1,56 @@
+# ===========================
+# ENVIRONNEMENT & DÉPENDANCES
+# ===========================
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+
+# ===========================
+# STREAMLIT
+# ===========================
+app_evalnat/.streamlit
+app_evalnat/.streamlit/secrets.toml   # fichiers secrets (API keys)
+app_evalnat/.streamlit/config.toml     # config locale Streamlit (thème, port, etc.)
+
+# ===========================
+# DONNÉES LOCALES
+# ===========================
+data/
+*.csv
+*.xlsx
+*.xls
+*.json
+*.parquet
+*.zip
+
+# ===========================
+# LOGS ET TEMPORAIRES
+# ===========================
+*.log
+*.tmp
+*.bak
+*.swp
+*.ipynb_checkpoints
+.cache/
+logs/
+
+# ===========================
+# CONFIGS D’EDITEURS & OS
+# ===========================
+.DS_Store
+.idea/
+.vscode/
+*.code-workspace
+
+# ===========================
+# ENVIRONNEMENT SECRET
+# ===========================
+.env
+.env.*
+*.env.local
+
