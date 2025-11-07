@@ -2,12 +2,20 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from config import *
+
+
 
 st.header("Vue d’ensemble du réseau")
 
 df = st.session_state.get('df')
 df_coordo = st.session_state.get('df_coordo')
 
+df['Valeur']=df['Valeur']*100
 
 
 if df is None or df.empty:
@@ -29,143 +37,428 @@ col1, col2, col3 = st.columns(3)
 moy_globale = df["Valeur"].mean()
 moy_maths = df.loc[df["Matière"] == "Mathématiques", "Valeur"].mean()
 moy_fr = df.loc[df["Matière"] == "Français", "Valeur"].mean()
-col1.metric("Moyenne générale", f"{moy_globale:.1f} %",border=True)
-col2.metric("Mathématiques", f"{moy_maths:.2f}%",border=True)
-col3.metric("Français", f"{moy_fr:.2f}%",border=True)
+col1.metric("Moyenne générale", f"{moy_globale:.0f} %",border=True)
+col2.metric("Mathématiques", f"{moy_maths:.0f}%",border=True)
+col3.metric("Français", f"{moy_fr:.0f}%",border=True)
 
 
 # # ============================================
 # # Ligne 2 : Cartographie
 # # ============================================
 
-# Moyenne des valeurs par école
-df_mean = df.groupby("Nom_ecole", as_index=False)["Valeur"].mean()
-# Fusion des moyennes avec les coordonnées géographiques
-df_map = pd.merge(
-    df_mean,
-    df_coordo,
-    on="Nom_ecole",
-    how="left"
-)
-df_map = df_map.rename(columns={'Valeur': 'Moyenne'})
-df_map["Moyenne"] = df_map["Moyenne"] * 100
-df_map["Moyenne etab"] = df_map["Moyenne"].map(lambda x: f"{x:.2f} %")
-df_map = df_map.dropna()
+# # Moyenne des valeurs par école
+# df_mean = df.groupby("Nom_ecole", as_index=False)["Valeur"].mean()
+# # Fusion des moyennes avec les coordonnées géographiques
+# df_map = pd.merge(
+#     df_mean,
+#     df_coordo,
+#     on="Nom_ecole",
+#     how="left"
+# )
+# df_map = df_map.rename(columns={'Valeur': 'Moyenne'})
+# df_map["Moyenne etab"] = df_map["Moyenne"].map(lambda x: f"{x:.2f} %")
+# df_map = df_map.dropna()
 
 
 
-fig = px.scatter_mapbox(
-    df_map,
-    lat="Lat",
-    lon="Long",
-    size="Moyenne",                  # Taille des points selon la moyenne
-    color="Moyenne",                 # Couleur selon la moyenne
-    hover_name="Nom_ecole",
-    hover_data={"Lat": False, "Long": False, "Moyenne": False,"Moyenne etab": True},
-    color_continuous_scale="Viridis",
-    zoom=1,
-    height=650
-)
-fig.update_layout(
-    mapbox_style="carto-positron",
-    mapbox_center={"lat": df_map["Lat"].mean(), "lon": df_map["Long"].mean()},
-    margin={"r":0, "t":0, "l":0, "b":0}
-)
-st.plotly_chart(fig, use_container_width=True)
+# fig = px.scatter_mapbox(
+#     df_map,
+#     lat="Lat",
+#     lon="Long",
+#     size="Moyenne",                  # Taille des points selon la moyenne
+#     color="Moyenne",                 # Couleur selon la moyenne
+#     hover_name="Nom_ecole",
+#     hover_data={"Lat": False, "Long": False, "Moyenne": False,"Moyenne etab": True},
+#     color_continuous_scale="Viridis",
+#     zoom=1,
+#     height=650
+# )
+# fig.update_layout(
+#     mapbox_style="carto-positron",
+#     mapbox_center={"lat": df_map["Lat"].mean(), "lon": df_map["Long"].mean()},
+#     margin={"r":0, "t":0, "l":0, "b":0}
+# )
+# st.plotly_chart(fig, use_container_width=True)
 
 
+# # st.subheader("Moyenne des résultats par matière et par niveau")
 
-# ============================================
-# SECTION 2 : Moyennes par domaine
-# ============================================
+# # Calcul des moyennes par matière et niveau
+# moyennes = (
+#     df.groupby(["Matière", "Niveau"])["Valeur"]
+#     .mean()
+#     .reset_index()
+#     .round(2)
+# )
 
-st.subheader("📊 Moyennes par domaine")
+# # Forcer l’ordre des niveaux et trier
+# moyennes["Niveau"] = pd.Categorical(moyennes["Niveau"], categories=ordre_niveaux, ordered=True)
+# moyennes = moyennes.sort_values(["Matière", "Niveau"]).reset_index(drop=True)
 
-# --- Filtres via st.pills ---
-reseaux = sorted(df["Réseau"].dropna().unique())
-statuts = sorted(df["Statut"].dropna().unique())
-homologations = sorted(df["Homologué"].dropna().unique())
+# # Création du graphique
+# fig = go.Figure()
 
-col1, col2, col3 = st.columns(3)
-reseau_sel = col1.pills("Réseau", reseaux, selection_mode="multi")
-statut_sel = col2.pills("Statut", statuts, selection_mode="multi")
-homo_sel = col3.pills("Homologué", homologations, selection_mode="multi")
+# for matiere in moyennes["Matière"].unique():
+#     df_mat = moyennes[moyennes["Matière"] == matiere].sort_values("Niveau")
+#     fig.add_trace(
+#         go.Scatter(
+#             x=df_mat["Niveau"],
+#             y=df_mat["Valeur"],
+#             mode="lines+markers+text",
+#             name=matiere,
+#             line=dict(width=4, color=palette.get(matiere)),
+#             marker=dict(size=10, line=dict(width=1, color="white")),
+#             text=df_mat["Valeur"].round(2),
+#             textposition="top center",
+#         )
+#     )
 
-# --- Application des filtres (directement sur df) ---
-mask = pd.Series(True, index=df.index)
 
-if reseau_sel:
-    mask &= df["Réseau"].isin(reseau_sel)
-if statut_sel:
-    mask &= df["Statut"].isin(statut_sel)
-if homo_sel:
-    mask &= df["Homologué"].isin(homo_sel)
+# # Mise en forme esthétique
+# fig.update_layout(
 
-df_filtered = df[mask]
+#     xaxis=dict(
+#         title="Niveau",
+#         categoryorder="array",
+#         categoryarray=ordre_niveaux,
+#         tickfont=dict(size=13),
+#     ),
+#     yaxis=dict(
+#         title="Score moyen",
+#         tickfont=dict(size=13),
+#         # 🔹 Resserre l’échelle autour des valeurs observées
+#         range=[
+#             moyennes["Valeur"].min() - 5,
+#             moyennes["Valeur"].max() + 5
+#         ],
+#         dtick=5,
+#     ),
+#     legend=dict(
+#         orientation="h",
+#         yanchor="bottom",
+#         y=1,
+#         xanchor="center",
+#         x=0.5,
+#     ),
 
-# --- Calcul des moyennes par domaine ---
-df_domaine = (
-    df_filtered.groupby("Domaine", as_index=False)
-    .agg(Moyenne=("Valeur", "mean"))
-    .sort_values("Moyenne", ascending=False)
-)
+#     margin=dict(l=50, r=30, t=80, b=40),
+# )
+# st.plotly_chart(fig, use_container_width=True)
 
-# --- Affichage du bar chart ---
-if df_domaine.empty:
-    st.warning("Aucune donnée ne correspond à cette sélection.")
-else:
-    fig_bar = px.bar(
-        df_domaine,
-        x="Moyenne",
-        y="Domaine",
-        orientation="h",
+
+def prepare_map_data(df, df_coordo):
+    """Calcule la moyenne des valeurs par école et fusionne avec les coordonnées."""
+    df_mean = df.groupby("Nom_ecole", as_index=False)["Valeur"].mean()
+    df_map = pd.merge(df_mean, df_coordo, on="Nom_ecole", how="left")
+    df_map = df_map.rename(columns={'Valeur': 'Moyenne'})
+    df_map["Moyenne etab"] = df_map["Moyenne"].map(lambda x: f"{x:.2f} %")
+    df_map = df_map.dropna()
+    return df_map
+
+
+def plot_map(df_map):
+    """Affiche la carte interactive des établissements."""
+    fig = px.scatter_mapbox(
+        df_map,
+        lat="Lat",
+        lon="Long",
+        size="Moyenne",
         color="Moyenne",
-        color_continuous_scale="RdYlGn",
-        title="Moyenne par domaine"
+        hover_name="Nom_ecole",
+        hover_data={"Lat": False, "Long": False, "Moyenne": False, "Moyenne etab": True},
+        color_continuous_scale="Viridis",
+        zoom=1,
+        height=700
     )
-    fig_bar.update_layout(
-        xaxis_title="Moyenne",
-        yaxis_title="Domaine",
-        height=600,
-        margin=dict(l=0, r=0, t=40, b=0)
+    fig.update_layout(
+        mapbox_style="carto-positron",
+        mapbox_center={"lat": df_map["Lat"].mean(), "lon": df_map["Long"].mean()},
+        margin={"r": 0, "t": 0, "l": 0, "b": 0}
     )
-    st.plotly_chart(fig_bar, use_container_width=True)
+    return fig
 
+
+def plot_line_chart(df, palette, ordre_niveaux):
+    """Trace la moyenne des résultats par matière et par niveau."""
+    moyennes = (
+        df.groupby(["Matière", "Niveau"])["Valeur"]
+        .mean()
+        .reset_index()
+        .round(2)
+    )
+    moyennes["Niveau"] = pd.Categorical(moyennes["Niveau"], categories=ordre_niveaux, ordered=True)
+    moyennes = moyennes.sort_values(["Matière", "Niveau"]).reset_index(drop=True)
+
+    fig = go.Figure()
+    for matiere in moyennes["Matière"].unique():
+        df_mat = moyennes[moyennes["Matière"] == matiere].sort_values("Niveau")
+        fig.add_trace(
+            go.Scatter(
+                x=df_mat["Niveau"],
+                y=df_mat["Valeur"],
+                mode="lines+markers+text",
+                name=matiere,
+                line=dict(width=4, color=palette.get(matiere, "#888")),
+                marker=dict(size=10, line=dict(width=1, color="white")),
+                text=df_mat["Valeur"].round(2),
+                textposition="top center",
+            )
+        )
+
+    fig.update_layout(
+        height=250,
+        xaxis=dict(
+            categoryarray=ordre_niveaux,
+            ),
+        yaxis=dict(
+            range=[moyennes["Valeur"].min() - 5, moyennes["Valeur"].max() + 5],
+            ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1,
+            xanchor="center",
+            x=0.5,
+            ),
+        margin=dict(l=50, r=30, t=0, b=0),
+        )
+    return fig
+
+
+
+def afficher_moyennes_par_domaine(df):
+    """Un seul graphique combinant Français (bleu) et Mathématiques (orange/rouge)."""
+
+    # --- Préparation des données ---
+    df = df.dropna(subset=["Matière", "Domaine", "Statut", "Valeur"])
+    df_domaine = (
+        df.groupby(["Matière", "Domaine", "Statut"], as_index=False)
+        .agg(Moyenne=("Valeur", "mean"))
+    )
+
+    # --- Ordre des domaines (Français à gauche, Math à droite) ---
+    domaines_fr = df_domaine[df_domaine["Matière"] == "Français"]["Domaine"].unique().tolist()
+    domaines_math = df_domaine[df_domaine["Matière"] == "Mathématiques"]["Domaine"].unique().tolist()
+    df_domaine["Domaine"] = pd.Categorical(df_domaine["Domaine"], categories=domaines_fr + domaines_math, ordered=True)
+
+    # --- Couleurs déclinées par matière/statut ---
+    statuts = sorted(df_domaine["Statut"].unique())
+    declinaisons_fr = ["#002b5c", "#0056b3", "#99b9f2"]   # Bleu foncé → clair
+    declinaisons_math = ["#8B1A1A", "#E74C3C", "#F5B7B1"] # Rouge foncé → clair
+
+    color_map = {}
+    for i, s in enumerate(statuts):
+        color_map[f"Français-{s}"] = declinaisons_fr[i]
+        color_map[f"Mathématiques-{s}"] = declinaisons_math[i]
+
+    # --- Fusion matière + statut pour color mapping ---
+    df_domaine["Catégorie"] = df_domaine["Matière"] + "-" + df_domaine["Statut"]
+
+    # --- Graphique combiné ---
+    fig = px.bar(
+        df_domaine,
+        x="Domaine",
+        y="Moyenne",
+        color="Catégorie",
+        barmode="group",
+        color_discrete_map=color_map,
+        height=450
+    )
+
+    # --- Mise en forme ---
+    fig.update_traces(marker_line_width=0.5, marker_line_color="white")
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title=None,
+        yaxis_title=None,
+        margin=dict(l=40, r=20, t=60, b=100),
+        bargap=0.25,
+    )
+
+    fig.update_xaxes(tickangle=45)
+    st.plotly_chart(fig, use_container_width=True)
+
+# Deux colonnes Streamlit
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    # st.subheader("Carte des établissements")
+    df_map = prepare_map_data(df, df_coordo)
+    fig_map = plot_map(df_map)
+    st.plotly_chart(fig_map, use_container_width=True)
+
+with col2:
+    # st.subheader("Évolution des résultats")
+    fig_line = plot_line_chart(df, palette, ordre_niveaux)
+    st.plotly_chart(fig_line, use_container_width=True)
+
+    afficher_moyennes_par_domaine(df)
+
+
+
+
+# --- Fonction 1 : Moyennes par homologation ---
+def afficher_comparaison_homologation(df):
+    """Affiche la moyenne générale selon l’homologation (graphique simple et compact)."""
+
+    # --- Nettoyage ---
+    df = df.dropna(subset=["Homologué", "Valeur"])
+    df["Homologué"] = df["Homologué"].astype(str).str.lower().str.strip()
+
+    # --- Moyenne générale par groupe ---
+    df_moyennes = (
+        df.groupby("Homologué")["Valeur"]
+        .mean()
+        .reset_index(name="Moyenne générale")
+    )
+
+    # --- Ordre et étiquettes cohérents ---
+    df_moyennes["Homologué"] = pd.Categorical(
+        df_moyennes["Homologué"], categories=["oui", "non"], ordered=True
+    )
+
+
+    # --- Graphique ---
+    fig = px.bar(
+        df_moyennes,
+        x="Homologué",
+        y="Moyenne générale",
+        color="Homologué",
+        color_discrete_map=palette,
+        text_auto=".1f",
+        title="Moyenne générale selon l’homologation",
+    )
+
+    # --- Mise en forme compacte et esthétique ---
+    fig.update_traces(
+        textposition="outside",
+        textfont=dict(size=12),
+        marker_line_width=0.8,
+        marker_line_color="white"
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        xaxis_title=None,
+        yaxis_title=None,
+        yaxis=dict(range=[df_moyennes["Moyenne générale"].min() - 5,
+                          df_moyennes["Moyenne générale"].max() + 5]),
+        xaxis=dict(
+            tickvals=["oui", "non"],
+            ticktext=["Homologué", "Non homologué"]
+        ),
+        margin=dict(l=30, r=30, t=50, b=40),
+        height=300,  # 🔹 plus compact
+        font=dict(size=13),
+        title=dict(font=dict(size=15), x=0.05, y=0.9)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- Fonction 2 : Dispersion globale par homologation ---
+def afficher_dispersion_globale_homologation(df):
+    """Affiche la dispersion globale des valeurs selon l’homologation."""
+
+    # --- Nettoyage ---
+    df = df.dropna(subset=["Homologué", "Valeur"])
+    df["Homologué"] = df["Homologué"].astype(str).str.lower().str.strip()
+    df = df[df["Homologué"].isin(["oui", "non"])]
+
+    # --- Graphique Violin ---
+    fig = px.violin(
+        df,
+        x="Homologué",
+        y="Valeur",
+        color="Homologué",
+        box=True,
+        points="all",
+        color_discrete_map=palette,
+        hover_data=["Matière", "Compétence", "Nom_ecole"],
+        title="Distribution globale des valeurs selon l’homologation",
+    )
+
+    fig.update_traces(
+        meanline_visible=True,
+        opacity=0.7,
+        marker=dict(size=3)
+    )
+    fig.update_layout(
+        showlegend=False,
+        yaxis_title=None,
+        xaxis_title=None,
+        height=420,
+        margin=dict(l=40, r=40, t=80, b=60),
+        font=dict(size=13),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# --- Affichage côte à côte (correction du bug Streamlit) ---
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Effet de l’homologation")
+    afficher_comparaison_homologation(df)
+    afficher_dispersion_globale_homologation(df)
+
+with col2:
+    st.subheader("Fr vs maths")
+
+
+# # --- Filtres via st.pills ---
+# reseaux = sorted(df["Réseau"].dropna().unique())
+# statuts = sorted(df["Statut"].dropna().unique())
+# homologations = sorted(df["Homologué"].dropna().unique())
+
+
+# reseau_sel = st.pills("Réseau", reseaux, selection_mode="multi")
+# statut_sel = col2.pills("Statut", statuts, selection_mode="multi")
+# homo_sel = col3.pills("Homologué", homologations, selection_mode="multi")
+
+# # --- Application des filtres (directement sur df) ---
+# mask = pd.Series(True, index=df.index)
+
+# mask &= df["Réseau"].isin(reseau_sel)
+
+# if statut_sel:
+#     mask &= df["Statut"].isin(statut_sel)
+# if homo_sel:
+#     mask &= df["Homologué"].isin(homo_sel)
+
+# df_filtered = df[mask]
+
+# # --- Calcul des moyennes par domaine ---
+# df_domaine = (
+#     df_filtered.groupby("Domaine", as_index=False)
+#     .agg(Moyenne=("Valeur", "mean"))
+#     .sort_values("Moyenne", ascending=False)
+# )
+
+# # --- Affichage du bar chart ---
+# if df_domaine.empty:
+#     st.warning("Aucune donnée ne correspond à cette sélection.")
+# else:
+#     fig_bar = px.bar(
+#         df_domaine,
+#         x="Moyenne",
+#         y="Domaine",
+#         orientation="h",
+#         color="Moyenne",
+#         color_continuous_scale="RdYlGn",
+#         title="Moyenne par domaine"
+#     )
+#     fig_bar.update_layout(
+#         xaxis_title="Moyenne",
+#         yaxis_title="Domaine",
+#         height=600,
+#         margin=dict(l=0, r=0, t=40, b=0)
+#     )
+#     st.plotly_chart(fig_bar, use_container_width=True)
 
 # colmap, colbar = st.columns([1.2, 1])
 
-# # ---- Carte réseau ----
-# df_ecoles = df_filtre.groupby(["Nom de l’école", "Pays", "Ville", "Réseau"], as_index=False).agg(
-#     Moyenne=("Valeur", "mean")
-# )
 
-# fig_map = px.scatter_geo(
-#     df_ecoles,
-#     locations="Pays",
-#     locationmode="country names",
-#     color="Moyenne",
-#     hover_name="Nom de l’école",
-#     hover_data=["Réseau", "Moyenne"],
-#     projection="natural earth",
-#     color_continuous_scale="RdYlGn",
-# )
-# fig_map.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-# colmap.plotly_chart(fig_map, use_container_width=True)
-
-# # ---- Domaine choisi ----
-# domaine_sel = colbar.pills("Choisir un domaine", df_filtre["Domaine"].unique(), selection_mode="single")
-# if domaine_sel:
-#     df_dom = df_filtre[df_filtre["Domaine"] == domaine_sel]
-#     df_comp = df_dom.groupby(["Compétence", "Matière"], as_index=False)["Valeur"].mean()
-#     fig_bar = px.bar(
-#         df_comp,
-#         x="Valeur",
-#         y="Compétence",
-#         color="Matière",
-#         orientation="h",
-#         title=f"Moyenne des compétences ({domaine_sel})",
-#     )
-#     colbar.plotly_chart(fig_bar, use_container_width=True)
 
 # # ---- Top / Bottom 3 compétences ----
 # st.markdown("### 🏅 Compétences remarquables")
