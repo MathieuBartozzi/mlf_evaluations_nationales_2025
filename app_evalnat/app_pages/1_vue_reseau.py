@@ -7,6 +7,8 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from config import *
+import matplotlib.pyplot as plt
+
 
 
 
@@ -22,17 +24,11 @@ if df is None or df.empty:
     st.warning("Aucune donnée disponible. Ouvrez la page Home")
     st.stop()
 
-# col1, col2=st.columns(2)
-# col1.dataframe(df)
-# col2.dataframe(df_coordo)
-
-
 # ============================================
 # SECTION 1 : Indicateurs clés
 # ============================================
 
 col1, col2, col3 = st.columns(3)
-
 
 moy_globale = df["Valeur"].mean()
 moy_maths = df.loc[df["Matière"] == "Mathématiques", "Valeur"].mean()
@@ -41,23 +37,6 @@ col1.metric("Moyenne générale", f"{moy_globale:.0f} %",border=True)
 col2.metric("Mathématiques", f"{moy_maths:.0f}%",border=True)
 col3.metric("Français", f"{moy_fr:.0f}%",border=True)
 
-
-# # ============================================
-# # Ligne 2 : Cartographie
-# # ============================================
-
-# # Moyenne des valeurs par école
-# df_mean = df.groupby("Nom_ecole", as_index=False)["Valeur"].mean()
-# # Fusion des moyennes avec les coordonnées géographiques
-# df_map = pd.merge(
-#     df_mean,
-#     df_coordo,
-#     on="Nom_ecole",
-#     how="left"
-# )
-# df_map = df_map.rename(columns={'Valeur': 'Moyenne'})
-# df_map["Moyenne etab"] = df_map["Moyenne"].map(lambda x: f"{x:.2f} %")
-# df_map = df_map.dropna()
 
 
 
@@ -146,6 +125,60 @@ col3.metric("Français", f"{moy_fr:.0f}%",border=True)
 # st.plotly_chart(fig, use_container_width=True)
 
 
+def heatmap_scores_par_reseau(df):
+    """
+    Affiche une carte de chaleur (heatmap) des scores moyens
+    par réseau, matière et niveau scolaire.
+    """
+
+
+    colonnes_requises = {'Niveau', 'Matière', 'Valeur', 'Réseau'}
+    if not colonnes_requises.issubset(df.columns):
+        st.error("Le DataFrame doit contenir : Niveau, Matière, Valeur, Réseau.")
+        return
+
+    # Filtrer uniquement les matières principales
+    df_filtre = df[df["Matière"].isin(["Français", "Mathématiques"])].copy()
+
+    # Choix de la matière à afficher
+    matiere = st.segmented_control(
+        "Choisissez la matière à afficher :",
+        ["Français", "Mathématiques"],
+        selection_mode="single",
+        default="Français"
+    )
+
+    # Calcul des moyennes par réseau et niveau
+    grouped = (
+        df_filtre[df_filtre["Matière"] == matiere]
+        .groupby(["Réseau", "Niveau"], as_index=False)["Valeur"]
+        .mean()
+        .round(1)
+    )
+    grouped["Niveau"] = pd.Categorical(grouped["Niveau"], categories=ordre_niveaux, ordered=True)
+
+    # Pivot pour le heatmap : Réseaux en lignes, Niveaux en colonnes
+    pivot = grouped.pivot(index="Réseau", columns="Niveau", values="Valeur")
+
+    # --- Graphique Plotly ---
+    fig = px.imshow(
+        pivot,
+        color_continuous_scale="RdYlGn",
+        text_auto=True,
+        aspect="auto",
+        labels=dict(color="Score moyen"),
+    )
+
+    fig.update_layout(
+        xaxis_title=None,
+        yaxis_title=None,
+        coloraxis_colorbar=dict(title="Score"),
+        height=225,
+        margin={"r": 0, "t": 0, "l": 0, "b": 0}# 🔹 fixe la hauteur de la figure
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 def prepare_map_data(df, df_coordo):
     """Calcule la moyenne des valeurs par école et fusionne avec les coordonnées."""
     df_mean = df.groupby("Nom_ecole", as_index=False)["Valeur"].mean()
@@ -168,7 +201,7 @@ def plot_map(df_map):
         hover_data={"Lat": False, "Long": False, "Moyenne": False, "Moyenne etab": True},
         color_continuous_scale="Viridis",
         zoom=1,
-        height=700
+        height=474
     )
     fig.update_layout(
         mapbox_style="carto-positron",
@@ -176,7 +209,6 @@ def plot_map(df_map):
         margin={"r": 0, "t": 0, "l": 0, "b": 0}
     )
     return fig
-
 
 def plot_line_chart(df, palette, ordre_niveaux):
     """Trace la moyenne des résultats par matière et par niveau."""
@@ -206,7 +238,7 @@ def plot_line_chart(df, palette, ordre_niveaux):
         )
 
     fig.update_layout(
-        height=250,
+        height=300,
         xaxis=dict(
             categoryarray=ordre_niveaux,
             ),
@@ -223,7 +255,6 @@ def plot_line_chart(df, palette, ordre_niveaux):
         margin=dict(l=50, r=30, t=0, b=0),
         )
     return fig
-
 
 
 def afficher_moyennes_par_domaine(df):
@@ -278,294 +309,269 @@ def afficher_moyennes_par_domaine(df):
     fig.update_xaxes(tickangle=45)
     st.plotly_chart(fig, use_container_width=True)
 
+
+def afficher_top_bottom(df):
+    """
+    Affiche deux DataFrames :
+      - Le Top 3 selon la valeur moyenne
+      - Le Bottom 3 juste en dessous
+    L'utilisateur choisit le niveau d'analyse (Nom de l'école, Domaine, Compétence).
+    """
+
+    # Vérification des colonnes nécessaires
+    colonnes_requises = {'Nom_ecole', 'Domaine', 'Compétence', 'Valeur'}
+    if not colonnes_requises.issubset(df.columns):
+        st.error("Le DataFrame doit contenir les colonnes : Nom_ecole, Domaine, Compétence, Valeur.")
+        return
+
+    # Labels lisibles pour l'utilisateur
+    labels = {
+        "École": "Nom_ecole",
+        "Domaine": "Domaine",
+        "Compétence": "Compétence"
+    }
+
+    # Contrôle segmenté
+    choix_label = st.segmented_control(
+        "Choisissez le niveau d'analyse :",
+        list(labels.keys()),
+        selection_mode="single",
+        default="École"
+    )
+
+    # Récupération du vrai nom de colonne
+    choix = labels[choix_label]
+
+    # Calcul des moyennes
+    grouped = df.groupby(choix, as_index=False)["Valeur"].mean().round(2)
+    grouped = grouped.sort_values(by="Valeur", ascending=False)
+    grouped = grouped.rename(columns={'Nom_ecole': 'École'})
+
+
+    # Séparation top / bottom 3
+    top3 = grouped.head(3).reset_index(drop=True)
+    bottom3 = grouped.tail(3).sort_values(by="Valeur", ascending=True).reset_index(drop=True)
+
+    # --- AFFICHAGE ---
+    st.write(f"**Top 3 {choix_label.lower()}s**")
+    st.dataframe(top3, use_container_width=True)
+
+    st.write(f" **Bottom 3 {choix_label.lower()}s**")
+    st.dataframe(bottom3, use_container_width=True)
+
+
+# def graphique_moyenne_ou_ecart(df):
+#         """
+#         Affiche un graphique en barres interactif (Plotly)
+#         permettant de visualiser soit les écarts à la moyenne globale,
+#         soit les moyennes brutes pour Français et Mathématiques,
+#         selon le critère choisi (Réseau, Statut, Homologué).
+#         """
+
+#         colonnes_requises = {'Matière', 'Valeur', 'Réseau', 'Statut', 'Homologué'}
+#         if not colonnes_requises.issubset(df.columns):
+#             st.error("Le DataFrame doit contenir : Matière, Valeur, Réseau, Statut, Homologué.")
+#             return
+
+#         # Filtrage des matières
+#         df_filtre = df[df["Matière"].isin(["Français", "Mathématiques"])].copy()
+
+#         col1, col2 = st.columns([1, 1])
+
+#         # Choix du critère d'analyse
+#         with col1 :
+#             critere = st.segmented_control(
+#                 "Choisissez le critère d'analyse :",
+#                 ["Réseau", "Statut", "Homologué"],
+#                 selection_mode="single",
+#                 default="Réseau"
+#             )
+
+#         # --- TOGGLE entre moyennes et écarts ---
+#         with col2:
+#             afficher_ecarts = st.toggle("Afficher les écarts à la moyenne globale", value=True)
+
+#         # Moyenne globale (pour calculer les écarts)
+#         moyenne_globale = df_filtre["Valeur"].mean()
+
+#         # Calcul de la moyenne par groupe
+#         grouped = (
+#             df_filtre.groupby([critere, "Matière"], as_index=False)["Valeur"]
+#             .mean()
+#             .rename(columns={"Valeur": "Moyenne"})
+#         )
+
+#         if afficher_ecarts:
+#             grouped["Valeur_affichée"] = grouped["Moyenne"] - moyenne_globale
+#             titre_y = "Écart à la moyenne globale"
+
+#         else:
+#             grouped["Valeur_affichée"] = grouped["Moyenne"]
+#             titre_y = "Moyenne"
+
+
+#         # --- Graphique Plotly ---
+#         fig = px.bar(
+#             grouped,
+#             x=critere,
+#             y="Valeur_affichée",
+#             color="Matière",
+#             barmode="group",
+#             text="Valeur_affichée",
+#             color_discrete_map=palette)
+
+#         # Ligne de référence à 0 uniquement si on affiche les écarts
+#         if afficher_ecarts:
+#             fig.add_hline(y=0, line_dash="dash", line_color="gray")
+
+#         # Mise en forme
+#         fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+#         fig.update_layout(
+#             yaxis_title=titre_y,
+#             xaxis_title=critere,
+#             plot_bgcolor="white",
+#             bargap=0.3,
+#             showlegend=True,
+#             height=350
+#         )
+
+#         st.plotly_chart(fig, use_container_width=True)
+
+def graphique_moyenne_ou_ecart(df, palette):
+    """
+    Affiche un graphique combiné avec 3 sous-graphes (Réseau, Statut, Homologué),
+    chacun ayant ses propres catégories en abscisse.
+    L'utilisateur peut basculer entre moyennes et écarts via un toggle.
+    """
+
+
+    colonnes_requises = {'Matière', 'Valeur', 'Réseau', 'Statut', 'Homologué'}
+    if not colonnes_requises.issubset(df.columns):
+        st.error("Le DataFrame doit contenir : Matière, Valeur, Réseau, Statut, Homologué.")
+        return
+
+    # Filtrer uniquement Français et Mathématiques
+    df_filtre = df[df["Matière"].isin(["Français", "Mathématiques"])].copy()
+
+    # --- TOGGLE entre moyennes et écarts ---
+    afficher_ecarts = st.toggle("Afficher les écarts à la moyenne globale", value=True)
+
+    # Moyenne globale pour le calcul des écarts
+    moyenne_globale = df_filtre["Valeur"].mean()
+
+    # --- Construction du dataframe long regroupant les 3 critères ---
+    df_long = pd.concat([
+        df_filtre[["Matière", "Valeur", "Réseau"]].rename(columns={"Réseau": "Critère_valeur"}).assign(Critère="Réseau"),
+        df_filtre[["Matière", "Valeur", "Statut"]].rename(columns={"Statut": "Critère_valeur"}).assign(Critère="Statut"),
+        df_filtre[["Matière", "Valeur", "Homologué"]].rename(columns={"Homologué": "Critère_valeur"}).assign(Critère="Homologué")
+    ])
+
+    # Moyenne par (Critère, valeur, matière)
+    grouped = (
+        df_long.groupby(["Critère", "Critère_valeur", "Matière"], as_index=False)["Valeur"]
+        .mean()
+        .rename(columns={"Valeur": "Moyenne"})
+    )
+
+    # Valeur à afficher : moyenne ou écart
+    if afficher_ecarts:
+        grouped["Valeur_affichée"] = grouped["Moyenne"] - moyenne_globale
+        titre_y = "Écart à la moyenne globale"
+    else:
+        grouped["Valeur_affichée"] = grouped["Moyenne"]
+        titre_y = "Moyenne"
+
+    # --- Graphique combiné ---
+    fig = px.bar(
+        grouped,
+        x="Critère_valeur",
+        y="Valeur_affichée",
+        color="Matière",
+        facet_col="Critère",
+        barmode="group",
+        text="Valeur_affichée",
+        color_discrete_map=palette
+        )
+
+    fig.update_xaxes(title_text=None)
+
+
+    # Ligne de référence à 0 uniquement pour les écarts
+    if afficher_ecarts:
+        fig.add_hline(y=0, line_dash="dash", line_color="gray")
+
+    # --- Mise en forme ---
+    fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
+    fig.update_layout(
+        yaxis_title=titre_y,
+        xaxis_title=None,
+        plot_bgcolor="white",
+        bargap=0.3,
+        showlegend=True,
+        height=450,
+    )
+
+
+    # 🔹 Axes indépendants
+    fig.for_each_xaxis(lambda ax: ax.update(matches=None))
+    fig.for_each_xaxis(
+    lambda ax: ax.update(tickangle=45) if "Réseau" in ax.anchor else None
+)
+
+
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))  # nettoyer le titre des facettes
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
 # Deux colonnes Streamlit
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns([2, 1])
 
 with col1:
     # st.subheader("Carte des établissements")
-    df_map = prepare_map_data(df, df_coordo)
-    fig_map = plot_map(df_map)
-    st.plotly_chart(fig_map, use_container_width=True)
+    with st.container(border=True):
+        df_map = prepare_map_data(df, df_coordo)
+        fig_map = plot_map(df_map)
+        st.plotly_chart(fig_map, use_container_width=True)
 
 with col2:
-    # st.subheader("Évolution des résultats")
-    fig_line = plot_line_chart(df, palette, ordre_niveaux)
-    st.plotly_chart(fig_line, use_container_width=True)
-
-    afficher_moyennes_par_domaine(df)
+    with st.container(border=True):
+        afficher_top_bottom(df)
 
 
 
 
-# --- Fonction 1 : Moyennes par homologation ---
-def afficher_comparaison_homologation(df):
-    """Affiche la moyenne générale selon l’homologation (graphique simple et compact)."""
-
-    # --- Nettoyage ---
-    df = df.dropna(subset=["Homologué", "Valeur"])
-    df["Homologué"] = df["Homologué"].astype(str).str.lower().str.strip()
-
-    # --- Moyenne générale par groupe ---
-    df_moyennes = (
-        df.groupby("Homologué")["Valeur"]
-        .mean()
-        .reset_index(name="Moyenne générale")
-    )
-
-    # --- Ordre et étiquettes cohérents ---
-    df_moyennes["Homologué"] = pd.Categorical(
-        df_moyennes["Homologué"], categories=["oui", "non"], ordered=True
-    )
-
-
-    # --- Graphique ---
-    fig = px.bar(
-        df_moyennes,
-        x="Homologué",
-        y="Moyenne générale",
-        color="Homologué",
-        color_discrete_map=palette,
-        text_auto=".1f",
-        title="Moyenne générale selon l’homologation",
-    )
-
-    # --- Mise en forme compacte et esthétique ---
-    fig.update_traces(
-        textposition="outside",
-        textfont=dict(size=12),
-        marker_line_width=0.8,
-        marker_line_color="white"
-    )
-
-    fig.update_layout(
-        showlegend=False,
-        xaxis_title=None,
-        yaxis_title=None,
-        yaxis=dict(range=[df_moyennes["Moyenne générale"].min() - 5,
-                          df_moyennes["Moyenne générale"].max() + 5]),
-        xaxis=dict(
-            tickvals=["oui", "non"],
-            ticktext=["Homologué", "Non homologué"]
-        ),
-        margin=dict(l=30, r=30, t=50, b=40),
-        height=300,  # 🔹 plus compact
-        font=dict(size=13),
-        title=dict(font=dict(size=15), x=0.05, y=0.9)
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-# --- Fonction 2 : Dispersion globale par homologation ---
-def afficher_dispersion_globale_homologation(df):
-    """Affiche la dispersion globale des valeurs selon l’homologation."""
-
-    # --- Nettoyage ---
-    df = df.dropna(subset=["Homologué", "Valeur"])
-    df["Homologué"] = df["Homologué"].astype(str).str.lower().str.strip()
-    df = df[df["Homologué"].isin(["oui", "non"])]
-
-    # --- Graphique Violin ---
-    fig = px.violin(
-        df,
-        x="Homologué",
-        y="Valeur",
-        color="Homologué",
-        box=True,
-        points="all",
-        color_discrete_map=palette,
-        hover_data=["Matière", "Compétence", "Nom_ecole"],
-        title="Distribution globale des valeurs selon l’homologation",
-    )
-
-    fig.update_traces(
-        meanline_visible=True,
-        opacity=0.7,
-        marker=dict(size=3)
-    )
-    fig.update_layout(
-        showlegend=False,
-        yaxis_title=None,
-        xaxis_title=None,
-        height=420,
-        margin=dict(l=40, r=40, t=80, b=60),
-        font=dict(size=13),
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# --- Affichage côte à côte (correction du bug Streamlit) ---
-col1, col2 = st.columns(2)
+col1, col2=st.columns(2)
 
 with col1:
-    st.subheader("Effet de l’homologation")
-    afficher_comparaison_homologation(df)
-    afficher_dispersion_globale_homologation(df)
+    with st.container(border=True):
 
-with col2:
-    st.subheader("Fr vs maths")
+        # afficher_moyennes_par_domaine(df)
+        heatmap_scores_par_reseau(df)
 
+with col2 :
 
-# # --- Filtres via st.pills ---
-# reseaux = sorted(df["Réseau"].dropna().unique())
-# statuts = sorted(df["Statut"].dropna().unique())
-# homologations = sorted(df["Homologué"].dropna().unique())
+    with st.container(border=True):
 
+        fig_line = plot_line_chart(df, palette, ordre_niveaux)
+        st.plotly_chart(fig_line, use_container_width=True)
 
-# reseau_sel = st.pills("Réseau", reseaux, selection_mode="multi")
-# statut_sel = col2.pills("Statut", statuts, selection_mode="multi")
-# homo_sel = col3.pills("Homologué", homologations, selection_mode="multi")
-
-# # --- Application des filtres (directement sur df) ---
-# mask = pd.Series(True, index=df.index)
-
-# mask &= df["Réseau"].isin(reseau_sel)
-
-# if statut_sel:
-#     mask &= df["Statut"].isin(statut_sel)
-# if homo_sel:
-#     mask &= df["Homologué"].isin(homo_sel)
-
-# df_filtered = df[mask]
-
-# # --- Calcul des moyennes par domaine ---
-# df_domaine = (
-#     df_filtered.groupby("Domaine", as_index=False)
-#     .agg(Moyenne=("Valeur", "mean"))
-#     .sort_values("Moyenne", ascending=False)
-# )
-
-# # --- Affichage du bar chart ---
-# if df_domaine.empty:
-#     st.warning("Aucune donnée ne correspond à cette sélection.")
-# else:
-#     fig_bar = px.bar(
-#         df_domaine,
-#         x="Moyenne",
-#         y="Domaine",
-#         orientation="h",
-#         color="Moyenne",
-#         color_continuous_scale="RdYlGn",
-#         title="Moyenne par domaine"
-#     )
-#     fig_bar.update_layout(
-#         xaxis_title="Moyenne",
-#         yaxis_title="Domaine",
-#         height=600,
-#         margin=dict(l=0, r=0, t=40, b=0)
-#     )
-#     st.plotly_chart(fig_bar, use_container_width=True)
-
-# colmap, colbar = st.columns([1.2, 1])
+with st.container(border=True):
+    graphique_moyenne_ou_ecart(df,palette)
 
 
+# col1, col2, col3 =st.columns(3)
 
-# # ---- Top / Bottom 3 compétences ----
-# st.markdown("### 🏅 Compétences remarquables")
+# with col1:
+#     with st.container(border=True):
+#         # afficher_moyennes_par_domaine(df)
+#         heatmap_scores_par_reseau(df)
 
-# df_comp_all = (
-#     df_filtre.groupby("Compétence", as_index=False)
-#     .agg(
-#         Moyenne=("Valeur", "mean"),
-#         Niveaux=("Niveau", lambda x: ", ".join(sorted(set(x))))
-#     )
-#     .sort_values("Moyenne", ascending=False)
-# )
+# with col2 :
+#     with st.container(border=True):
+#         fig_line = plot_line_chart(df, palette, ordre_niveaux)
+#         st.plotly_chart(fig_line, use_container_width=True)
 
-# top3 = df_comp_all.head(3)
-# bottom3 = df_comp_all.tail(3)
-
-# colt1, colt2 = st.columns(2)
-# colt1.subheader("Top 3")
-# colt1.dataframe(top3, hide_index=True)
-
-# colt2.subheader("Bottom 3")
-# colt2.dataframe(bottom3, hide_index=True)
-
-# # ============================================
-# # SECTION 2 : Comparaisons et évolution
-# # ============================================
-
-# st.header("📈 Comparaisons et évolutions")
-
-# # ---- Evolution par niveau ----
-# st.subheader("Évolution par niveau")
-# mat_choice = st.pills("Matière à afficher", ["Les deux"] + sorted(df["Matière"].unique()), selection_mode="single")
-
-# if mat_choice == "Les deux":
-#     df_evol = df_filtre
-# else:
-#     df_evol = df_filtre[df_filtre["Matière"] == mat_choice]
-
-# df_evol_niv = df_evol.groupby(["Niveau", "Matière"], as_index=False)["Valeur"].mean()
-# fig_evol = px.line(df_evol_niv, x="Niveau", y="Valeur", color="Matière", markers=True)
-# st.plotly_chart(fig_evol, use_container_width=True)
-
-# # ---- Corrélation compétences ----
-# st.subheader("Corrélation entre compétences (moyenne / écart-type)")
-
-# df_corr = (
-#     df_filtre.groupby("Compétence", as_index=False)
-#     .agg(
-#         Moyenne=("Valeur", "mean"),
-#         Ecart_type=("Valeur", "std"),
-#         Niveaux=("Niveau", lambda x: ", ".join(sorted(set(x))))
-#     )
-# )
-# fig_corr = px.scatter(
-#     df_corr,
-#     x="Moyenne",
-#     y="Ecart_type",
-#     hover_data=["Compétence", "Niveaux"],
-#     color="Moyenne",
-#     color_continuous_scale="RdYlGn",
-# )
-# st.plotly_chart(fig_corr, use_container_width=True)
-# st.caption("Les compétences avec faible moyenne et fort écart-type sont prioritaires pour progresser.")
-
-# # ---- Ecart par réseau (violin) ----
-# st.subheader("Écart par réseau")
-# fig_violin = px.violin(df_filtre, x="Réseau", y="Valeur", color="Matière", box=True, points="all")
-# st.plotly_chart(fig_violin, use_container_width=True)
-
-# # ============================================
-# # SECTION 3 : Effet Homologation
-# # ============================================
-
-# st.header("🏛️ Effet de l’homologation")
-
-# # ---- Comparaison par matière ----
-# df_homo = df_filtre.groupby(["Matière", "Homologué"], as_index=False)["Valeur"].mean()
-# fig_homo = px.bar(
-#     df_homo,
-#     x="Matière",
-#     y="Valeur",
-#     color="Homologué",
-#     barmode="group",
-#     text_auto=".2f",
-#     title="Moyenne selon homologation"
-# )
-# st.plotly_chart(fig_homo, use_container_width=True)
-
-# # ---- % d’établissements homologués dans top 10 compétences ----
-# top10 = df_filtre.groupby("Compétence")["Valeur"].mean().nlargest(10).index
-# pct_homologues = df_filtre[df_filtre["Compétence"].isin(top10)]["Homologué"].eq("oui").mean()
-# st.metric("Taux d’homologation dans le top 10 des compétences les mieux maîtrisées", f"{pct_homologues*100:.1f}%")
-
-# # ============================================
-# # BONUS : Indice d’équité intra-réseau
-# # ============================================
-
-# st.header("⚖️ Indice d’équité intra-réseau")
-
-# df_equite = (
-#     df_filtre.groupby("Réseau", as_index=False)
-#     .agg(
-#         Moyenne=("Valeur", "mean"),
-#         Ecart_type=("Valeur", "std"),
-#     )
-# )
-# df_equite["Indice_equité"] = 1 - (df_equite["Ecart_type"] / df_equite["Moyenne"])
-
-# fig_equite = px.bar(df_equite, x="Réseau", y="Indice_equité", title="Indice d’équité intra-réseau")
-# st.plotly_chart(fig_equite, use_container_width=True)
+# with col3 :
+#     with st.container(border=True):
+#         graphique_moyenne_ou_ecart(df)
