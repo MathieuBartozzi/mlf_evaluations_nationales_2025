@@ -10,6 +10,5 @@ palette = {
     "non": T10[4],  #
 }
 
-# --- Palette de couleurs partagée ---
 
 ordre_niveaux = ["CP", "CE1", "CE2", "CM1", "CM2"]
