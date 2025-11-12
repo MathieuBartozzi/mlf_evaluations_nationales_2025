@@ -1,13 +1,13 @@
 import plotly.express as px
 # --- Palette globale utilisée dans toute l'app ---
 
-G10 = px.colors.qualitative.G10
+T10 = px.colors.qualitative.T10
 palette = {
-    "Français":G10[0],
-    "Mathématiques":G10[1],
-    "Moyenne réseau":G10[2],
-    "oui": G10[3],
-    "non": G10[4],  #
+    "Français":T10[3],
+    "Mathématiques":T10[4],
+    "Moyenne réseau":T10[2],
+    "oui": T10[3],
+    "non": T10[4],  #
 }
 
 # --- Palette de couleurs partagée ---
