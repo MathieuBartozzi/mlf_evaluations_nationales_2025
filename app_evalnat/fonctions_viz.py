@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from config import *
-# from clustering import description_cluster
 
 
 
@@ -14,6 +13,7 @@ from config import *
 
 
 # moyenne établissement
+@st.cache_data
 def get_moyenne_et_delta(df_global, df_ecole, matiere=None):
     """
     Calcule la moyenne de l'établissement et le delta par rapport à la moyenne réseau.
@@ -88,6 +88,7 @@ def heatmap_scores_par_reseau(df, ordre_niveaux):
     st.plotly_chart(fig, use_container_width=True)
 
 
+@st.cache_data
 def prepare_map_data(df, df_coordo):
     """Calcule la moyenne des valeurs par école et fusionne avec les coordonnées."""
     df_mean = df.groupby("Nom_ecole", as_index=False)["Valeur"].mean()
@@ -465,7 +466,17 @@ def plot_pie_clusters(df_feat):
         }
 
     )
-    fig.update_layout(height=300, margin=dict(l=0, r=0, t=40, b=0))
+    fig.update_layout(
+            height=320,
+            margin=dict(l=0, r=0, t=40, b=40),
+            legend=dict(
+                orientation="h",      # horizontal
+                yanchor="bottom",
+                y=-0.2,               # sous le graphique
+                xanchor="center",
+                x=0.5
+            )
+        )
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -503,10 +514,11 @@ def plot_pca_3d(df_pca, ecole_selectionnee,palette):
 
     fig.update_layout(height=400, margin=dict(l=0, r=0, t=0, b=0))
     fig.update_layout(showlegend=False)
-    # fig.update_layout(
-    # scene_camera=dict(
-    #     eye=dict(x=2.5, y=2.5, z=1.5)
-    # ))
+    fig.update_layout(scene=dict(
+    xaxis_title="1 – Fondamentaux",
+    yaxis_title="2 – Automatisation",
+    zaxis_title="3 – Complexité",
+))
     fig.update_layout(
     scene_camera=dict(
         eye=dict(x=0.7, y=0.7, z=0.8),
@@ -515,3 +527,53 @@ def plot_pca_3d(df_pca, ecole_selectionnee,palette):
     ))
 
     st.plotly_chart(fig, use_container_width=True)
+
+
+def get_recommandations_profil(profil):
+    recommandations = {
+        1: """
+**Recommandations – Profil 1**
+
+- Renforcer le calcul mental structuré quotidien
+- Consolider les techniques opératoires
+- Introduire plus de tâches numériques répétées
+- Utiliser des rituels courts d’automatisation
+- Introduire davantage de tâches numériques répétées et ritualisées
+- Utiliser des rituels courts d’automatisation (5–7 min)
+- S’appuyer sur leurs forces en compréhension pour aborder la résolution de problèmes (verbalisation, reformulation)
+- Articuler compréhension ↔ nombre : petits problèmes contextualisés pour automatiser les faits numériques
+""",
+
+        2: """
+**Recommandations – Profil 2**
+- Harmoniser les progressions CP–CM2
+- Structurer un référentiel de compétences d’école
+- Organiser des conseils de cycle ciblés
+- Mettre en place des pratiques pédagogiques communes
+- Prioriser les fondamentaux en CP–CE1 : langage oral, décodage, numération
+- Renforcer la cohérence interclasses via des outils partagés (fiches méthodes, traces écrites types)
+""",
+
+        3: """
+**Recommandations – Profil 3**
+
+- Identifier 2–3 fragilités précises pour cibler les actions d’amélioration
+- Valoriser et diffuser les pratiques efficaces existantes
+- Introduire des défis cognitifs pour maintenir une dynamique de progression
+- Développer la métacognition (explicitation des stratégies)
+- Travailler la cohérence verticale : aligner certains points clés des progressions
+- Renforcer la liaison entre compréhension et résolution de problèmes (transfert de stratégies)
+""",
+
+        4: """
+**Recommandations – Profil 4**
+
+- Travail intensif et structuré de la compréhension
+- Renforcer les langages et le vocabulaire (rituels lexicaux, catégorisation)
+- Problèmes verbalisés : expliciter la démarche, reformuler, questionner
+- Ateliers de raisonnement et d’inférences
+- Développer des stratégies de lecture explicites : repérage d’informations, segmentation, liens logiques
+- Mobiliser leurs compétences mathématiques pour soutenir la compréhension(lecture comme résolution de problème : étapes, indices, preuves)
+"""
+    }
+    return recommandations.get(profil, "Profil inconnu")

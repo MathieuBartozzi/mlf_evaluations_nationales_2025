@@ -9,6 +9,7 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from scipy.stats import linregress, spearmanr
 import random
+import streamlit as st
 
 np.random.seed(42)
 random.seed(42)
@@ -32,7 +33,7 @@ def evolution_spearman(g):
 # --------------------------------------------
 # 2. Construction du DataFrame de features
 # --------------------------------------------
-
+@st.cache_data
 def construire_features(df):
     """
     Retourne un DF large (compétences en colonnes) + slope + spearman.
@@ -67,7 +68,6 @@ def construire_features(df):
 # --------------------------------------------
 # 3. PCA + Clustering (KMeans)
 # --------------------------------------------
-
 def calculer_clustering(df_feat, n_clusters=4):
     """
     Retourne :
@@ -96,20 +96,6 @@ def calculer_clustering(df_feat, n_clusters=4):
 
     return df_feat, df_pca, pca, scaler, kmeans
 
-# df = st.session_state.get('df')
-# df_coordo = st.session_state.get('df_coordo')
-
-# if df is None or df.empty:
-#     st.warning("Aucune donnée disponible. Ouvrez la page Home")
-#     st.stop()
-
-# df['Valeur'] = df['Valeur'] * 100
-# df_feat = construire_features(df)
-# df_feat, df_pca, pca, scaler, kmeans = calculer_clustering(df_feat)
-
-# --------------------------------------------
-# 4. Descriptions textuelles des clusters
-# --------------------------------------------
 
 DESCRIPTIONS_PROFILS = {
     0: "Établissements fragiles mais homogènes.",

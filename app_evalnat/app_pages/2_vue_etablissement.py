@@ -126,119 +126,34 @@ profil = cluster_id + 1
 
 with st.container(border=True):
 
-    st.markdown(f"""
-    ### 🧬 Profil {profil}
-    _{description_profil(cluster_id)}_
-    """)
+    st.markdown("**Résultat du profilage**")
 
-    col1, col2 = st.columns([1, 2])
+    col_gauche, col_droite = st.columns([1,1.4])
 
-    with col1:
-        plot_pie_clusters(df_feat)   # avec palette → couleurs cohérentes
+    # ---------------------------
+    # ➤ COLONNE GAUCHE : Profil + axes
+    # ---------------------------
+    with col_gauche:
 
-    with col2:
+        st.markdown(f"Le profil de **{ecole_selectionnee}** est le **profil {profil}**")
+
+        pc1 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC1"].values[0]
+        pc2 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC2"].values[0]
+        pc3 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC3"].values[0]
+
+        # Affichage des axes
+        a1, a2, a3 = st.columns(3)
+        a1.metric("Axe 1 – Fondamentaux", f"{pc1:.2f}")
+        a2.metric("Axe 2 – Automatisation", f"{pc2:.2f}")
+        a3.metric("Axe 3 – Complexité", f"{pc3:.2f}")
+
+        st.caption("ℹ️ Les axes PCA sont centrés sur le réseau : **0 = moyenne**, valeurs positives = **au-dessus**, valeurs négatives = **en-dessous**. Plus l’écart à 0 est fort, plus la position est marquée.")
+
+        # Recommandations en fonction du profil
+        st.markdown(get_recommandations_profil(profil))
+
+    # ---------------------------
+    # ➤ COLONNE DROITE : Figure PCA 3D
+    # ---------------------------
+    with col_droite:
         plot_pca_3d(df_pca, ecole_selectionnee, palette)
-
-    with st.popover("Comprendre les 4 types de profils"):
-        for pid, desc in DESCRIPTIONS_PROFILS.items():
-            st.markdown(f"**Profil {pid} :** {desc}")
-
-
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown(f"""
-    Profil {profil}
-    _{description_profil(cluster_id)}_
-    """)
-
-    plot_pca_3d(df_pca, ecole_selectionnee, palette)
-
-
-with col2:
-    plot_pie_clusters(df_feat)   # avec palette → couleurs cohérentes
-
-
-# ===================================================
-# 9️⃣ Interprétation du positionnement de l’établissement
-# ===================================================
-
-with st.container(border=True):
-    st.subheader("📌 Comprendre le positionnement de l’établissement")
-
-    pc1 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC1"].values[0]
-    pc2 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC2"].values[0]
-    pc3 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC3"].values[0]
-
-    colA, colB, colC = st.columns(3)
-    colA.metric("PC1", f"{pc1:.2f}", help="Compréhension, raisonnement, lecture")
-    colB.metric("PC2", f"{pc2:.2f}", help="Automatisation, calcul, techniques")
-    colC.metric("PC3", f"{pc3:.2f}", help="Compétences complexes, transfert")
-
-    st.markdown("""
-    ### Lecture pédagogique
-    - **PC1 élevé** → compréhension forte
-    - **PC2 élevé** → automatisation forte
-    - **PC3 élevé** → capacité à réussir des tâches complexes
-    """)
-
-# ===================================================
-# 🔎 1️⃣0️⃣ Pourquoi cet établissement est-il dans ce profil ?
-# ===================================================
-
-with st.expander("🔎 Pourquoi cet établissement appartient à ce profil ?"):
-    st.markdown(f"""
-    L'établissement **{ecole_selectionnee}** appartient au **Profil {profil}**, car sa position
-    dans l’espace PCA correspond à la logique pédagogique dominante de ce groupe :
-
-    {description_profil(cluster_id)}
-    """)
-
-# ===================================================
-# 1️⃣1️⃣ Recommandations pédagogiques ciblées
-# ===================================================
-
-with st.expander("🎯 Recommandations pédagogiques pour l'établissement"):
-
-    if profil == 1:
-        st.markdown("""
-        ### 🟦 Profil 1 — Compréhension forte
-        - Renforcer l’automatisation quotidienne
-        - Développer les tâches complexes
-        """)
-
-    elif profil == 2:
-        st.markdown("""
-        ### 🟧 Profil 2 — Cohérence faible
-        - Structurer la progression verticale
-        - Installer des routines quotidiennes
-        """)
-
-    elif profil == 3:
-        st.markdown("""
-        ### 🟩 Profil 3 — Équilibré
-        - Cibler les compétences faibles identifiées
-        - Harmoniser les pratiques pédagogiques
-        """)
-
-    else:
-        st.markdown("""
-        ### 🟥 Profil 4 — Procédural
-        - Renforcer compréhension, vocabulaire, inférences
-        - Intégrer la verbalisation dans toutes les séances
-        - Introduire des tâches complexes graduées
-        """)
-
-# ===================================================
-# 1️⃣2️⃣ Conclusion locale
-# ===================================================
-
-with st.container(border=True):
-    st.success(f"""
-    ### Synthèse pour {ecole_selectionnee}
-
-    Les données de l’établissement montrent un positionnement cohérent avec le
-    **Profil {profil}**.
-    La combinaison du radar, de la heatmap et de la position PCA permet de comprendre
-    les forces, fragilités et dynamiques pédagogiques.
-    Ces éléments servent de base au **pilotage pédagogique local**.
-    """)

@@ -43,11 +43,13 @@ col3.metric("Français", f"{moy_fr:.0f}%", border=True)
 col1, col2 = st.columns([2, 1])
 with col1:
     with st.container(border=True):
+        st.write("**Cartographie mondiale**")
         df_map = prepare_map_data(df, df_coordo)
         plot_map(df_map)  # affichage fait dans la fonction
 
 with col2:
     with st.container(border=True):
+        st.write("**Valeurs extrèmes**")
         afficher_top_bottom(df)
 
 # =============================
@@ -56,98 +58,53 @@ with col2:
 col1, col2 = st.columns(2)
 with col1:
     with st.container(border=True):
+        st.write("**Scores par niveau et réseau**")
         heatmap_scores_par_reseau(df, ordre_niveaux)  # affichage interne
 
 with col2:
     with st.container(border=True):
+
+        st.write("**Évolution par matière et niveau**")
         plot_line_chart(df, palette, ordre_niveaux)  # affichage interne
 
 # =============================
 # Section : Graphique combiné
 # =============================
 
-graphique_moyenne_ou_ecart(df, palette)
 
-
-st.subheader("Profils et répartitions des etablissements")
-
-
-plot_pie_clusters(df_feat)
-
-  # affichage interne
-# ===================================================
-# 5️⃣ Lecture globale du clustering réseau
-# ===================================================
 
 with st.container(border=True):
-    st.subheader("🔍 Comprendre la logique du clustering réseau")
+    st.write("**Profils et répartitions des etablissements**")
+    col1, col2 = st.columns(2)
+    with col1 :
+        st.markdown(
+        """
+        Le clustering regroupe les établissements en fonction de leurs dynamiques pédagogiques observées sur l’ensemble des compétences du **CP au CM2**. **Quatre profils** émergent de l'analyse :
 
-    st.markdown("""
-    Le clustering regroupe les établissements en fonction de leurs **dynamiques pédagogiques**
-    sur l’ensemble des compétences du CP au CM2.
+        | Profil | Description synthétique |
+        |--------|--------------------------|
+        | **1** | Bonnes performances en compréhension et en compréhension syntaxique et textuelle, mais une automatisation encore insuffisante (calcul, techniques opératoires). |
+        | **2** | Performances hétérogènes, avec une progression CP–CM2 peu régulière, suggérant une cohérence d’ensemble à renforcer. |
+        | **3** | Résultats globalement équilibrés entre compréhension, automatisation et résolution complexe, avec des fragilités limitées et ciblables. |
+        | **4** | Forts en procédures et raisonnement mathématique, mais des fragilités en compréhension, raisonnement et transfert dans des tâches complexes. |
 
-    Il repose sur une **Analyse en Composantes Principales (PCA)** permettant d’identifier
-    trois axes majeurs :
 
-    - **PC1 – Fondamentaux sémantiques :** compréhension orale/écrite, raisonnement, sens
-    - **PC2 – Automatisation mathématique :** calcul mental, techniques opératoires
-    - **PC3 – Complexité cognitive :** tâches intégratives, problèmes multi-étapes
+        L’analyse repose sur trois axes structurants en lien avec les compétences évaluées :
 
-    La carte PCA réseau montre comment les écoles se répartissent selon ces dimensions.
-    """)
+        - **Axe 1 – Fondamentaux sémantiques** : compréhension orale/écrite, vocabulaire, raisonnement
+        - **Axe 2 – Automatisation mathématique** : calcul mental, techniques opératoires
+        - **Axe 3 – Complexité cognitive** : tâches intégratives, problèmes multi-étapes
+        """
+        )
 
-# ===================================================
-# 6️⃣ Logiques pédagogiques des 4 profils
-# ===================================================
-
-with st.expander("🧬 Logique des profils (lecture réseau)"):
-    st.markdown("""
-    ### 🟦 Profil 1 — « Sens fort »
-    Écoles centrées sur la compréhension et le raisonnement.
-
-    ### 🟧 Profil 2 — « Intermédiaire »
-    Résultats modérés, cohérence verticale fragile.
-
-    ### 🟩 Profil 3 — « Équilibré »
-    Écoles homogènes et robustes.
-
-    ### 🟥 Profil 4 — « Procédural »
-    Forte automatisation mais compréhension fragile.
-    """)
-
-# ===================================================
-# 7️⃣ Diagnostic réseau
-# ===================================================
-
-with st.container(border=True):
-    st.subheader("📊 Diagnostic réseau")
-
-    # plot_pie_clusters(df_feat)
-
-    st.markdown("""
-    ### Lecture réseau
-    - Le **profil dominant** révèle la culture pédagogique majoritaire du réseau.
-    - Une forte part de Profil 4 → réseau orienté « automatisation ».
-    - Une forte part de Profil 1 → réseau orienté « compréhension ».
-    - Une forte part de Profil 2 → réseau peu structuré pédagogiquement.
-    - Une forte part de Profil 3 → réseau équilibré.
-    """)
-
-# ===================================================
-# 8️⃣ Recommandations réseau
-# ===================================================
-
-with st.expander("🎯 Recommandations réseau"):
-    st.markdown("""
-    ### Si le réseau est dominé par le Profil 4
-    → Renforcer sens, lecture, vocabulaire, résolution de problèmes.
-
-    ### Si dominé par le Profil 1
-    → Déployer des rituels d’automatisation, calcul mental, techniques opératoires.
-
-    ### Si dominé par le Profil 2
-    → Structurer les progressions verticales CP–CM2 et harmoniser les pratiques.
-
-    ### Si dominé par le Profil 3
-    → Mutualiser les pratiques efficaces entre établissements.
-    """)
+    with col2:
+        vue = st.segmented_control(
+        "Choisissez la vue à afficher :",
+        ["Répartition", "Vue 3D"],
+        selection_mode="single",
+        default="Répartition"
+    )
+        if vue =="Répartition":
+            plot_pie_clusters(df_feat)
+        else:
+            plot_pca_3d(df_pca, ecole_selectionnee=None,palette=None)
