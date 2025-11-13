@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
-from scipy.stats import spearmanr
 from config import *
+# from clustering import description_cluster
+
 
 
 
@@ -12,6 +12,8 @@ from config import *
 # Page : vue_reseau.py
 # =============================
 
+
+# moyenne établissement
 def get_moyenne_et_delta(df_global, df_ecole, matiere=None):
     """
     Calcule la moyenne de l'établissement et le delta par rapport à la moyenne réseau.
@@ -230,7 +232,14 @@ def graphique_moyenne_ou_ecart(df, palette):
         facet_col="Critère",
         barmode="group",
         text="Valeur_affichée",
-        color_discrete_map=palette
+        color_discrete_map=palette,
+        hover_data={
+        "Critère": False,           # déjà visible dans le titre de facette
+        "Critère_valeur": True,     # ex: Maroc, Privé, Oui
+        "Matière": True,            # Français / Maths
+        "Moyenne": ":.2f",          # valeur brute
+        "Valeur_affichée": ":.2f",  # écart ou valeur
+    }
     )
 
     if afficher_ecarts:
@@ -244,9 +253,8 @@ def graphique_moyenne_ou_ecart(df, palette):
         bargap=0.3,
         showlegend=True,
         margin=dict(l=40, r=20, t=20, b=40),
-        height=450,
+        height=600,
         legend=dict(
-            title=None,
             orientation="h",       # horizontale
             yanchor="bottom",
             y=1.15,                # légèrement au-dessus du graphe
@@ -256,7 +264,8 @@ def graphique_moyenne_ou_ecart(df, palette):
     )
 
    # Supprime les labels/ticks de l’axe X
-    fig.for_each_xaxis(lambda ax: ax.update(showticklabels=False, title_text=None, matches=None))
+    fig.for_each_xaxis(lambda ax: ax.update(showticklabels=True, title_text=None, matches=None))
+
 
     # Nettoyage des titres de facettes ("Critère=Réseau" → "Réseau")
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
@@ -268,7 +277,6 @@ def graphique_moyenne_ou_ecart(df, palette):
 # =============================
 # Page : vue_etablissement.py
 # =============================
-
 
 def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
     """
@@ -300,8 +308,8 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
 
     # --- Couleurs : palette issue de config ---
     color_map = {
-        f"{ecole_selectionnee}": palette["Français"],  # couleur de base, on ajustera ensuite
-        "Moyenne réseau": palette["Moyenne réseau"],
+        f"{ecole_selectionnee}": palette["etab"],  # couleur de base, on ajustera ensuite
+        "Moyenne réseau": palette["réseau"],
     }
 
     # --- Construction du radar ---
@@ -316,8 +324,6 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
 
     )
 
-
-
     # --- Mise en forme Plotly ---
     fig.update_layout(
         polar=dict(
@@ -330,7 +336,7 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
         ),
         legend_title_text=None,
         showlegend=True,
-        height=500,
+        height=450,
         margin=dict(l=40, r=40, t=60, b=40),
         legend=dict(
             orientation="h",
@@ -371,19 +377,18 @@ def plot_heatmap_competences(df_ecole,ordre_niveaux):
 
     fig = px.imshow(
         pivot,
-        color_continuous_scale="RdYlGn",
+        color_continuous_scale="Viridis",
         text_auto=".1f",
         aspect="auto",
         labels=dict(color="Score moyen (%)")
     )
 
-    fig.update_layout(height=500, margin=dict(l=40, r=40, t=20, b=40))
+    fig.update_layout(height=500, margin=dict(l=40, r=40, t=20, b=40),xaxis_title=None,yaxis_title=None )
     st.plotly_chart(fig, use_container_width=True)
 
 
 
-
-def plot_scatter_comparatif(df, ecole_selectionnee):
+def plot_scatter_comparatif(df, ecole_selectionnee,palette):
     """Compare les établissements sur la moyenne Math vs Français avec régression."""
 
     # On calcule la moyenne par établissement et matière
@@ -412,8 +417,7 @@ def plot_scatter_comparatif(df, ecole_selectionnee):
         x="Mathématiques",
         y="Français",
         opacity=0.6,
-        color_discrete_sequence=["#999999"],
-        title="Comparaison des établissements",
+        color_discrete_sequence=[palette["réseau"]],
         trendline="ols",
     )
 
@@ -426,7 +430,7 @@ def plot_scatter_comparatif(df, ecole_selectionnee):
             mode="markers+text",
             text=df_sel["Nom_ecole"],
             textposition="top center",
-            marker=dict(size=14, color="#e74c3c", line=dict(width=2, color="white")),
+            marker=dict(size=14, color=palette["etab"], line=dict(width=2, color="white"), symbol="diamond"),
             name=ecole_selectionnee,
         ))
     else:
@@ -444,41 +448,70 @@ def plot_scatter_comparatif(df, ecole_selectionnee):
 
     st.plotly_chart(fig, use_container_width=True)
 
+# --------------------------------------------
+# Pie chart distribution des clusters
+# --------------------------------------------
 
-# def plot_bar_classement(df, ecole_selectionnee):
-#     choix_vue = st.segmented_control(
-#         "Choisissez la vue :", ["Moyenne générale", "Mathématiques", "Français"], default="Moyenne générale"
-#     )
+def plot_pie_clusters(df_feat):
+    cluster_counts = df_feat["cluster"].value_counts().sort_index()
 
-#     if choix_vue == "Moyenne générale":
-#         grouped = df.groupby("Nom_ecole")["Valeur"].mean().reset_index()
-#     else:
-#         grouped = df[df["Matière"] == choix_vue].groupby("Nom_ecole")["Valeur"].mean().reset_index()
+    fig = px.pie(
+        names=[f"Profil {i+1}" for i in cluster_counts.index],
+        values=cluster_counts.values,
+        hole=0.4,
+        color=[str(i) for i in cluster_counts.index],
+        color_discrete_map={
+            str(k): v for k, v in CLUSTER_COLORS.items()
+        }
 
-#     grouped = grouped.sort_values(by="Valeur", ascending=False)
-#     grouped["Couleur"] = np.where(grouped["Nom_ecole"] == ecole_selectionnee, "#e74c3c", "#888")
+    )
+    fig.update_layout(height=300, margin=dict(l=0, r=0, t=40, b=0))
 
-#     fig = px.bar(
-#         grouped,
-#         x="Nom_ecole",
-#         y="Valeur",
-#         text="Valeur",
-#         color="Couleur",
-#         color_discrete_map="identity",
-#     )
+    st.plotly_chart(fig, use_container_width=True)
 
-#     fig.update_traces(texttemplate="%{text:.1f}", textposition="outside")
-#     fig.update_layout(
-#         height=450,
-#         margin=dict(l=40, r=40, t=40, b=40),
-#         showlegend=False,
-#         xaxis_title=None,
-#         yaxis_title="Score moyen (%)",
-#     )
+# --------------------------------------------
+# PCA 3D avec point de l'établissement surligné
+# --------------------------------------------
 
-#     st.plotly_chart(fig, use_container_width=True)
+def plot_pca_3d(df_pca, ecole_selectionnee,palette):
+    df_pca = df_pca.copy()
+    df_pca["cluster_str"] = df_pca["cluster"].astype(str)
 
+    fig = px.scatter_3d(
+        df_pca,
+        x="PC1", y="PC2", z="PC3",
+        color="cluster_str",
+        hover_name="Nom_ecole",
+        opacity=0.8,
+        color_discrete_map={
+            str(k): v for k, v in CLUSTER_COLORS.items()
+        }
+    )
 
+    # mise en avant établissement
+    df_sel = df_pca[df_pca["Nom_ecole"] == ecole_selectionnee]
+    if not df_sel.empty:
+        fig.add_trace(go.Scatter3d(
+            x=df_sel["PC1"], y=df_sel["PC2"], z=df_sel["PC3"],
+            mode="markers+text",
+            text=[ecole_selectionnee],
+            textposition="top center",
+            marker=dict(size=14, color=palette['etab'], line=dict(width=3, color="white"),opacity=1, symbol="diamond"),
+            name="Établissement sélectionné",
 
+        ))
 
+    fig.update_layout(height=400, margin=dict(l=0, r=0, t=0, b=0))
+    fig.update_layout(showlegend=False)
+    # fig.update_layout(
+    # scene_camera=dict(
+    #     eye=dict(x=2.5, y=2.5, z=1.5)
+    # ))
+    fig.update_layout(
+    scene_camera=dict(
+        eye=dict(x=0.7, y=0.7, z=0.8),
+        up=dict(x=0, y=0, z=1),
+        center=dict(x=0, y=0, z=0)
+    ))
 
+    st.plotly_chart(fig, use_container_width=True)

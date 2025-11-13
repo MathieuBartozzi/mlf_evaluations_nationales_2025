@@ -9,6 +9,8 @@ import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from config import *
 from fonctions_viz import *
+from clustering import *
+
 
 # ===================================================
 # PAGE : Vue par établissement
@@ -24,6 +26,11 @@ if df is None or df.empty:
     st.stop()
 
 df["Valeur"] = df["Valeur"] * 100
+df["niveau_code"] = df["Niveau"].apply(lambda x: ordre_niveaux.index(x))
+
+df_feat = construire_features(df)
+df_feat, df_pca, pca, scaler, kmeans = calculer_clustering(df_feat)
+
 
 # ---------------------------------------------------
 # 1️⃣ Sélecteur d’établissement
@@ -32,6 +39,10 @@ ecoles = sorted([str(e) for e in df["Nom_ecole"].dropna().unique()])
 ecole_selectionnee = st.selectbox("Choisissez un établissement :", ecoles)
 
 df_ecole = df[df["Nom_ecole"] == ecole_selectionnee]
+
+# Construction clustering réseau (une seule fois)
+
+
 
 st.markdown(f"### 🏫 {ecole_selectionnee}")
 
@@ -88,32 +99,146 @@ col3.metric(
 # ---------------------------------------------------
 # st.subheader("Forces et faiblesses par domaine")
 
-col1, col2 =st.columns(2)
-with col1 :
-    plot_radar_domaine(df_ecole, df,ecole_selectionnee,palette)
 
-with col2 :
-    st.write("blabla")
+with st.container(border=True):
+    col1, col2 =st.columns([2,1])
+    with col1 :
+        plot_radar_domaine(df_ecole, df,ecole_selectionnee,palette)
+
+    with col2 :
+        plot_scatter_comparatif(df, ecole_selectionnee,palette)
 
 # ---------------------------------------------------
 # 4️⃣ Heatmap des compétences par niveau
 # ---------------------------------------------------
-st.subheader("Analyse des compétences par niveau")
+
+with st.container(border=True):
+    col1, col2 =st.columns([2,1])
+    with col1 :
+        plot_heatmap_competences(df_ecole,ordre_niveaux)
+    with col2:
+         plot_line_chart(df_ecole, palette, ordre_niveaux)
 
 
-plot_heatmap_competences(df_ecole,ordre_niveaux)
-# ---------------------------------------------------
-# 5️⃣ Scatterplot Math / Français (comparatif réseau)
-# ---------------------------------------------------
-st.subheader("Positionnement de l’établissement dans le réseau")
+# --- Chargement du cluster de l'établissement ---
+cluster_id = int(df_feat.loc[ecole_selectionnee, "cluster"])
+profil = cluster_id + 1
 
-plot_scatter_comparatif(df, ecole_selectionnee)
+with st.container(border=True):
 
-# ---------------------------------------------------
-# 6️⃣ Classement général
-# ---------------------------------------------------
-# st.subheader("Classement des établissements")
+    st.markdown(f"""
+    ### 🧬 Profil {profil}
+    _{description_profil(cluster_id)}_
+    """)
 
-# plot_bar_classement(df, ecole_selectionnee)
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        plot_pie_clusters(df_feat)   # avec palette → couleurs cohérentes
+
+    with col2:
+        plot_pca_3d(df_pca, ecole_selectionnee, palette)
+
+    with st.popover("Comprendre les 4 types de profils"):
+        for pid, desc in DESCRIPTIONS_PROFILS.items():
+            st.markdown(f"**Profil {pid} :** {desc}")
 
 
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown(f"""
+    Profil {profil}
+    _{description_profil(cluster_id)}_
+    """)
+
+    plot_pca_3d(df_pca, ecole_selectionnee, palette)
+
+
+with col2:
+    plot_pie_clusters(df_feat)   # avec palette → couleurs cohérentes
+
+
+# ===================================================
+# 9️⃣ Interprétation du positionnement de l’établissement
+# ===================================================
+
+with st.container(border=True):
+    st.subheader("📌 Comprendre le positionnement de l’établissement")
+
+    pc1 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC1"].values[0]
+    pc2 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC2"].values[0]
+    pc3 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC3"].values[0]
+
+    colA, colB, colC = st.columns(3)
+    colA.metric("PC1", f"{pc1:.2f}", help="Compréhension, raisonnement, lecture")
+    colB.metric("PC2", f"{pc2:.2f}", help="Automatisation, calcul, techniques")
+    colC.metric("PC3", f"{pc3:.2f}", help="Compétences complexes, transfert")
+
+    st.markdown("""
+    ### Lecture pédagogique
+    - **PC1 élevé** → compréhension forte
+    - **PC2 élevé** → automatisation forte
+    - **PC3 élevé** → capacité à réussir des tâches complexes
+    """)
+
+# ===================================================
+# 🔎 1️⃣0️⃣ Pourquoi cet établissement est-il dans ce profil ?
+# ===================================================
+
+with st.expander("🔎 Pourquoi cet établissement appartient à ce profil ?"):
+    st.markdown(f"""
+    L'établissement **{ecole_selectionnee}** appartient au **Profil {profil}**, car sa position
+    dans l’espace PCA correspond à la logique pédagogique dominante de ce groupe :
+
+    {description_profil(cluster_id)}
+    """)
+
+# ===================================================
+# 1️⃣1️⃣ Recommandations pédagogiques ciblées
+# ===================================================
+
+with st.expander("🎯 Recommandations pédagogiques pour l'établissement"):
+
+    if profil == 1:
+        st.markdown("""
+        ### 🟦 Profil 1 — Compréhension forte
+        - Renforcer l’automatisation quotidienne
+        - Développer les tâches complexes
+        """)
+
+    elif profil == 2:
+        st.markdown("""
+        ### 🟧 Profil 2 — Cohérence faible
+        - Structurer la progression verticale
+        - Installer des routines quotidiennes
+        """)
+
+    elif profil == 3:
+        st.markdown("""
+        ### 🟩 Profil 3 — Équilibré
+        - Cibler les compétences faibles identifiées
+        - Harmoniser les pratiques pédagogiques
+        """)
+
+    else:
+        st.markdown("""
+        ### 🟥 Profil 4 — Procédural
+        - Renforcer compréhension, vocabulaire, inférences
+        - Intégrer la verbalisation dans toutes les séances
+        - Introduire des tâches complexes graduées
+        """)
+
+# ===================================================
+# 1️⃣2️⃣ Conclusion locale
+# ===================================================
+
+with st.container(border=True):
+    st.success(f"""
+    ### Synthèse pour {ecole_selectionnee}
+
+    Les données de l’établissement montrent un positionnement cohérent avec le
+    **Profil {profil}**.
+    La combinaison du radar, de la heatmap et de la position PCA permet de comprendre
+    les forces, fragilités et dynamiques pédagogiques.
+    Ces éléments servent de base au **pilotage pédagogique local**.
+    """)
