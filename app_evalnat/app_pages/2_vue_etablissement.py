@@ -44,7 +44,7 @@ df_ecole = df[df["Nom_ecole"] == ecole_selectionnee]
 
 
 
-st.markdown(f"### 🏫 {ecole_selectionnee}")
+st.subheader(f"{ecole_selectionnee}")
 
 # ---------------------------------------------------
 # 2️⃣ Carte d’identité de l’établissement
@@ -101,6 +101,7 @@ col3.metric(
 
 
 with st.container(border=True):
+    st.subheader("Positionnement général dans le réseau")
     col1, col2 =st.columns([2,1])
     with col1 :
         plot_radar_domaine(df_ecole, df,ecole_selectionnee,palette)
@@ -113,6 +114,7 @@ with st.container(border=True):
 # ---------------------------------------------------
 
 with st.container(border=True):
+    st.subheader("Progression des apprentissages de CP à CM2")
     col1, col2 =st.columns([2,1])
     with col1 :
         plot_heatmap_competences(df_ecole,ordre_niveaux)
@@ -126,7 +128,7 @@ profil = cluster_id + 1
 
 with st.container(border=True):
 
-    st.markdown("**Résultat du profilage**")
+    st.subheader("Résultat du profilage")
 
     col_gauche, col_droite = st.columns([1,1.4])
 

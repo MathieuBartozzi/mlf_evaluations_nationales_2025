@@ -30,6 +30,13 @@ def evolution_spearman(g):
     corr, _ = spearmanr(g["niveau_code"], g["Valeur"])
     return corr
 
+
+def delta_first_last(g):
+    if g["niveau_code"].nunique() < 2:
+        return np.nan
+    g = g.sort_values("niveau_code")
+    return g["Valeur"].iloc[-1] - g["Valeur"].iloc[0]
+
 # --------------------------------------------
 # 2. Construction du DataFrame de features
 # --------------------------------------------

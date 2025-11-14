@@ -3,7 +3,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from config import *
-
+import numpy as np
+import plotly.express as px
+import statsmodels.api as sm
 
 
 
@@ -467,7 +469,7 @@ def plot_pie_clusters(df_feat):
 
     )
     fig.update_layout(
-            height=320,
+            height=400,
             margin=dict(l=0, r=0, t=40, b=40),
             legend=dict(
                 orientation="h",      # horizontal
@@ -577,3 +579,314 @@ def get_recommandations_profil(profil):
 """
     }
     return recommandations.get(profil, "Profil inconnu")
+
+
+def color_dot(color):
+    return f'<span style="color:{color};font-size:2em;">●</span>'
+
+def square(color):
+    return f'<span style="background:{color}; width:12px; height:12px; display:inline-block;"></span>'
+
+
+
+
+# --------------------------------------------
+# page 3
+# --------------------------------------------
+
+def vue_top_bottom_matiere(df, matiere, n=5):
+    key_segment = f"seg_{matiere}"   # 🔥 clé unique
+
+    options_map = {
+        "+": ":material/add:  + maîtrisées",
+        "-": ":material/remove:  - maîtrisées",
+    }
+
+    choix = st.segmented_control(
+        f"{matiere}",
+        options=options_map.keys(),
+        format_func=lambda o: options_map[o],
+        selection_mode="single",
+        default="+",
+        key=key_segment,   # 🔑 clé unique obligatoire
+    )
+
+    df_mat = df[df["Matière"] == matiere]
+    df_mean = df_mat.groupby("Compétence")["Valeur"].mean().reset_index()
+
+    top_n = df_mean.sort_values("Valeur", ascending=False).head(n)
+    bottom_n = df_mean.sort_values("Valeur", ascending=True).head(n)
+
+    if choix == "+":
+        st.dataframe(top_n, use_container_width=True)
+    else:
+        st.dataframe(bottom_n, use_container_width=True)
+
+
+def plot_distribution_competences(df, nbins=30):
+    """
+    Histogramme des scores des COMPÉTENCES.
+    1 point = 1 compétence (moyenne réseau).
+    """
+
+    df_comp = (
+        df.groupby(["Matière", "Compétence"])["Valeur"]
+        .mean()
+        .reset_index()
+    )
+
+    fig = px.histogram(
+        df_comp,
+        x="Valeur",
+        color="Matière",
+        nbins=nbins,
+        barmode="overlay",
+        color_discrete_map=palette,
+
+    )
+
+    fig.update_layout(
+        bargap=0.05,
+        legend=dict(
+            title=None,
+            orientation="h",
+            yanchor="bottom",
+            y=1.1,
+            xanchor="center",
+            x=0.5
+        ),
+        xaxis_title="Niveau de maîtrise (%)",
+        yaxis_title="Nombre de compétences",
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+
+def plot_swarm_competences(df, palette, seuil_std=12, height=480):
+
+    df = df.copy()
+
+    # 1. Compétences discriminantes
+    std_by_comp = df.groupby("Compétence")["Valeur"].std()
+    compet_discri = std_by_comp[std_by_comp >= seuil_std].index
+    df["is_discri"] = df["Compétence"].isin(compet_discri)
+
+    # 2. Ordre stable des compétences
+    compet_order = sorted(df["Compétence"].unique())
+    df["Comp_idx"] = df["Compétence"].apply(lambda c: compet_order.index(c))
+
+    # 3. Couleur finale
+    df["color_display"] = df.apply(
+        lambda r: "red" if r["is_discri"] else palette[r["Matière"]],
+        axis=1
+    )
+
+    # 4. Jitter pour simuler le swarm
+    jitter = np.random.uniform(-0.05, 0.05, size=len(df))
+    df["x_jitter"] = df["Comp_idx"] + jitter
+
+    fig = go.Figure()
+
+    # ========= TRACE SWARM UNIQUE =========
+    fig.add_trace(go.Scatter(
+        x=df["x_jitter"],
+        y=df["Valeur"],
+        mode="markers",
+        marker=dict(
+            color=df["color_display"],
+            size=6,
+            opacity=0.6
+        ),
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>" +
+            "Matière : %{customdata[1]}<br>" +
+            "Valeur : %{y:.1f}%<br>" +
+            "<extra></extra>"
+        ),
+        customdata=np.stack([df["Compétence"], df["Matière"]], axis=1),
+        showlegend=False
+    ))
+
+    # ========= LÉGENDE MANUELLE =========
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode="markers",
+        marker=dict(size=10, color=palette["Français"]),
+        name="Français"
+    ))
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode="markers",
+        marker=dict(size=10, color=palette["Mathématiques"]),
+        name="Mathématiques"
+    ))
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode="markers",
+        marker=dict(size=10, color="red"),
+        name="Compétences discriminantes"
+    ))
+
+    # ========= LAYOUT =========
+    fig.update_layout(
+        height=height,
+        margin=dict(l=20, r=20, t=40, b=20),
+
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.12,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=13)
+        ),
+
+        xaxis=dict(
+            tickmode="array",
+            tickvals=list(range(len(compet_order))),
+            ticktext=compet_order,
+            showticklabels=False
+        ),
+        yaxis=dict(title="% de maîtrise")
+    )
+
+    return fig
+
+
+def list_competences_discriminantes(df, seuil_std=12):
+    """
+    Retourne deux dataframes :
+    - compétences discriminantes en Français
+    - compétences discriminantes en Mathématiques
+    Basé sur l'écart-type (dispersion) et le seuil fourni.
+    """
+
+    df = df.copy()
+
+    # 1. Calcul de l'écart-type par compétence × matière
+    df_var = df.groupby(["Matière", "Compétence"])["Valeur"].std().reset_index()
+    df_var = df_var.rename(columns={"Valeur": "ecart_type"})
+
+    # 2. Filtrer selon seuil
+    df_discri = df_var[df_var["ecart_type"] >= seuil_std]
+
+    # 3. Séparer par matière
+    df_fr = df_discri[df_discri["Matière"] == "Français"].sort_values("ecart_type", ascending=False)
+    df_math = df_discri[df_discri["Matière"] == "Mathématiques"].sort_values("ecart_type", ascending=False)
+
+    return df_fr, df_math
+
+
+
+def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
+
+    df = df.copy()
+
+    # ===============================
+    # 1. Agrégation compétence × matière
+    # ===============================
+    df_disp = df.groupby(["Compétence", "Matière"])["Valeur"].agg(["mean", "std"]).reset_index()
+
+    # ===============================
+    # 2. Marquage des compétences discriminantes
+    # ===============================
+    df_disp["is_discri"] = df_disp["std"] >= seuil_std
+
+    # Couleur : rouge si discriminante, sinon palette matière
+    df_disp["color_display"] = df_disp.apply(
+        lambda r: ("#d62728" if r["is_discri"] else palette[r["Matière"]]),
+        axis=1
+    )
+
+
+    # ===============================
+    # 3. Scatter principal
+    # ===============================
+    fig = px.scatter(
+        df_disp,
+        x="mean",
+        y="std",
+        color="color_display",
+        hover_data=["Compétence"],
+        labels={"mean": "Moyenne (%)", "std": "Dispersion (écart-type)"},
+        color_discrete_map="identity"
+    )
+
+    # Taille unique des points
+    fig.update_traces(marker=dict(size=10, line=dict(width=0)))
+
+    # ===============================
+    # 4. Zones pédagogiques
+    # ===============================
+    ymax = df_disp["std"].max() + 2
+
+    fig.add_shape(type="rect", x0=0, x1=50, y0=0, y1=ymax,
+                  fillcolor="rgba(255,0,0,0.06)", line_width=0)
+
+    fig.add_shape(type="rect", x0=85, x1=100, y0=0, y1=ymax,
+                  fillcolor="rgba(0,150,255,0.08)", line_width=0)
+
+    fig.add_shape(type="rect", x0=50, x1=85, y0=seuil_std, y1=ymax,
+                  fillcolor="rgba(255,165,0,0.10)", line_width=0)
+
+    # ===============================
+    # 5. Lignes de référence
+    # ===============================
+    fig.add_vline(x=50, line_dash="dot", line_color="red", opacity=0.4)
+    fig.add_vline(x=85, line_dash="dot", line_color="blue", opacity=0.4)
+    fig.add_hline(y=seuil_std, line_dash="dot", line_color="orange", opacity=0.4)
+
+    # ===============================
+    # 6. Annotations
+    # ===============================
+    fig.add_annotation(x=45, y=ymax - 0.5, text="Trop difficile", showarrow=False,
+                       font=dict(color="red", size=12))
+    fig.add_annotation(x=92, y=ymax - 0.5, text="Trop facile", showarrow=False,
+                       font=dict(color="blue", size=12))
+    fig.add_annotation(x=67, y=ymax - 0.5, text="Instable", showarrow=False,
+                       font=dict(color="darkorange", size=12))
+
+    # ===============================
+    # 7. Courbe LOWESS
+    # ===============================
+    lowess = sm.nonparametric.lowess(df_disp["std"], df_disp["mean"], frac=0.35)
+    fig.add_trace(go.Scatter(
+        x=lowess[:, 0],
+        y=lowess[:, 1],
+        mode="lines",
+        line=dict(color="black", width=2, dash="dash"),
+        name="Tendance"
+    ))
+
+    # ===============================
+    # 8. Nouvelle légende simplifiée
+    # ===============================
+    legend_items = [
+        go.Scatter(x=[None], y=[None], mode='markers',
+                   marker=dict(size=10, color=palette["Français"]),
+                   name="Français"),
+        go.Scatter(x=[None], y=[None], mode='markers',
+                   marker=dict(size=10, color=palette["Mathématiques"]),
+                   name="Mathématiques"),
+        go.Scatter(x=[None], y=[None], mode='markers',
+                   marker=dict(size=10, color="#d62728"),
+                   name="Compétences discriminantes"),
+    ]
+    for item in legend_items:
+        fig.add_trace(item)
+
+    fig.update_layout(
+        legend=dict(
+            orientation="h",
+            y=1.18,
+            x=0.5,
+            xanchor="center",
+            font=dict(size=14)
+        ),
+        xaxis=dict(range=[40, 100]),   # <--- commence à 0 !
+        height=height,
+        margin=dict(l=20, r=20, t=80, b=20),
+    )
+
+    return fig

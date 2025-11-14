@@ -43,13 +43,13 @@ col3.metric("Français", f"{moy_fr:.0f}%", border=True)
 col1, col2 = st.columns([2, 1])
 with col1:
     with st.container(border=True):
-        st.write("**Cartographie mondiale**")
+        st.subheader("**Cartographie mondiale**")
         df_map = prepare_map_data(df, df_coordo)
         plot_map(df_map)  # affichage fait dans la fonction
 
 with col2:
     with st.container(border=True):
-        st.write("**Valeurs extrèmes**")
+        st.subheader("**Valeurs extrêmes**")
         afficher_top_bottom(df)
 
 # =============================
@@ -58,13 +58,13 @@ with col2:
 col1, col2 = st.columns(2)
 with col1:
     with st.container(border=True):
-        st.write("**Scores par niveau et réseau**")
+        st.subheader("**Scores par niveau et réseau**")
         heatmap_scores_par_reseau(df, ordre_niveaux)  # affichage interne
 
 with col2:
     with st.container(border=True):
 
-        st.write("**Évolution par matière et niveau**")
+        st.subheader("**Évolution par matière et niveau**")
         plot_line_chart(df, palette, ordre_niveaux)  # affichage interne
 
 # =============================
@@ -74,19 +74,19 @@ with col2:
 
 
 with st.container(border=True):
-    st.write("**Profils et répartitions des etablissements**")
+    st.subheader("**Profils et répartitions des etablissements**")
     col1, col2 = st.columns(2)
     with col1 :
         st.markdown(
-        """
+        f"""
         Le clustering regroupe les établissements en fonction de leurs dynamiques pédagogiques observées sur l’ensemble des compétences du **CP au CM2**. **Quatre profils** émergent de l'analyse :
 
         | Profil | Description synthétique |
         |--------|--------------------------|
-        | **1** | Bonnes performances en compréhension et en compréhension syntaxique et textuelle, mais une automatisation encore insuffisante (calcul, techniques opératoires). |
-        | **2** | Performances hétérogènes, avec une progression CP–CM2 peu régulière, suggérant une cohérence d’ensemble à renforcer. |
-        | **3** | Résultats globalement équilibrés entre compréhension, automatisation et résolution complexe, avec des fragilités limitées et ciblables. |
-        | **4** | Forts en procédures et raisonnement mathématique, mais des fragilités en compréhension, raisonnement et transfert dans des tâches complexes. |
+        | {square(palette["profil_0"])} **1**| Bonnes performances en compréhension et en compréhension syntaxique et textuelle, mais une automatisation encore insuffisante (calcul, techniques opératoires). |
+        | {square(palette["profil_1"])} **2** | Performances hétérogènes, avec une progression CP–CM2 peu régulière, suggérant une cohérence d’ensemble à renforcer. |
+        | {square(palette["profil_2"])} **3** | Résultats globalement équilibrés entre compréhension, automatisation et résolution complexe, avec des fragilités limitées et ciblables. |
+        | {square(palette["profil_3"])} **4** | Forts en procédures et raisonnement mathématique, mais des fragilités en compréhension, raisonnement et transfert dans des tâches complexes. |
 
 
         L’analyse repose sur trois axes structurants en lien avec les compétences évaluées :
@@ -95,7 +95,7 @@ with st.container(border=True):
         - **Axe 2 – Automatisation mathématique** : calcul mental, techniques opératoires
         - **Axe 3 – Complexité cognitive** : tâches intégratives, problèmes multi-étapes
         """
-        )
+        ,unsafe_allow_html=True)
 
     with col2:
         vue = st.segmented_control(

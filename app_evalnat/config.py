@@ -2,18 +2,6 @@ import plotly.express as px
 # --- Palette globale utilisée dans toute l'app ---
 
 T10 = px.colors.qualitative.T10
-# palette = {
-#     "etab":T10[1],
-#     # "oui": T10[2],
-#     "Français":T10[3],
-#     "Mathématiques":T10[4],
-#     "profil_1": T10[5],
-#     "profil_2": T10[6],
-#     "profil_3": T10[7],
-#     "profil_4": T10[8],
-#     "réseau":T10[9],
-
-# }
 
 palette = {
     "etab":T10[2],
