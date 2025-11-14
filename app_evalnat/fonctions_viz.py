@@ -890,3 +890,208 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
     )
 
     return fig
+
+
+
+
+def afficher_top_bottom_evolutions(df):
+    """Affiche Top 3 et Bottom 3 selon l'évolution moyenne (slope),
+    avec choix de la matière (Français / Maths), uniquement par Compétence."""
+
+    colonnes_requises = {'Matière', 'Compétence', 'slope'}
+    if not colonnes_requises.issubset(df.columns):
+        st.error("Le DataFrame doit contenir les colonnes : Matière, Compétence, slope.")
+        return
+
+    # Choix matière
+    matiere = st.segmented_control(
+        "Choisissez la matière :",
+        ["Français", "Mathématiques"],
+        selection_mode="single",
+        default="Français"
+    )
+
+    # Filtre matière
+    df_filtre = df[df["Matière"] == matiere]
+
+    if df_filtre.empty:
+        st.warning(f"Aucune donnée disponible pour {matiere}.")
+        return
+
+    # Groupby compétence
+    grouped = (
+        df_filtre
+        .groupby("Compétence", as_index=False)["slope"]
+        .mean()
+        .round(3)
+        .sort_values(by="slope", ascending=False)
+    )
+
+    # Top 3
+    top3 = grouped.head(3).reset_index(drop=True)
+
+    # Bottom 3
+    bottom3 = (
+        grouped.tail(3)
+        .sort_values(by="slope", ascending=True)
+        .reset_index(drop=True)
+    )
+
+    # Affichage
+
+    st.write("**Top 3 progressions (compétence)**")
+    st.dataframe(top3, use_container_width=True)
+
+    st.write("**Bottom 3 régressions (compétence)**")
+    st.dataframe(bottom3, use_container_width=True)
+
+def afficher_bar_domaine_prog(df):
+    """Affiche un barplot des progressions moyennes par domaine (colonne slope)."""
+
+    colonnes_requises = {"Domaine", "slope"}
+    if not colonnes_requises.issubset(df.columns):
+        st.error("Le DataFrame doit contenir les colonnes : Domaine, slope.")
+        return
+
+    df_dom = (
+        df.groupby("Domaine")["slope"]
+        .mean()
+        .reset_index()
+        .sort_values("slope")
+    )
+
+    # Ajout d'une colonne "Couleur" pour différencier + / -
+    df_dom["Couleur"] = df_dom["slope"].apply(lambda x: "Progression" if x >= 0 else "Régression")
+
+    # Palette personnalisée
+    couleurs = {
+        "Progression": "#2ecc71",   # Vert
+        "Régression": "#e74c3c"     # Rouge
+    }
+     # Construction graphique
+    fig_dom = px.bar(
+        df_dom,
+        x="slope",
+        y="Domaine",
+        orientation="h",
+        color="Couleur",
+        color_discrete_map=couleurs,
+        height=500
+    )
+    fig_dom.update_yaxes(title=None)
+    fig_dom.update_layout(legend_title_text="")
+
+
+
+    # Ligne verticale à 0
+    fig_dom.add_vline(x=0, line_width=1, line_color="black")
+
+    st.plotly_chart(fig_dom, use_container_width=True)
+
+
+
+# def plot_regularity_vs_slope(df, palette):
+#     """
+#     Affiche le graphique Régularité vs Pente (spearman vs slope)
+#     avec une palette personnalisée.
+
+#     Parameters
+#     ----------
+#     df : pandas.DataFrame
+#         Doit contenir les colonnes : "slope", "spearman", "Matière", "Compétence".
+#     palette : dict
+#         Dictionnaire couleurs ex : {"Français": "#1f77b4", "Mathématiques": "#aec7e8"}
+#     """
+
+#     st.subheader("Régularité vs Pente")
+
+#     fig = px.scatter(
+#         df,
+#         x="slope",
+#         y="spearman",
+#         color="Matière",
+#         hover_data=["Compétence"],
+#         color_discrete_map=palette,   # 🎨 ta palette personnalisée
+#     )
+
+#     # Lignes verticales & horizontales
+#     fig.add_hline(y=0, line_color="black", line_width=2)
+#     fig.add_vline(x=0, line_color="black", line_width=2)
+
+#     # Ajout d’un peu de style (optionnel)
+#     fig.update_layout(
+#         xaxis_title="Pente (slope)",
+#         yaxis_title="Corrélation de Spearman",
+#         legend_title="Matière",
+#         template="simple_white"
+#     )
+
+#     st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_regularity_vs_slope(df, palette, point_size=12):
+    st.subheader("Régularité vs Pente")
+
+    # FIGURE DE BASE
+    fig = px.scatter(
+        df,
+        x="slope",
+        y="spearman",
+        color="Matière",
+        hover_data=["Compétence"],
+        color_discrete_map=palette,
+        size=[point_size] * len(df),
+        size_max=point_size
+    )
+
+    # limites pour les zones
+    x_min = df["slope"].min()
+    x_max = df["slope"].max()
+    y_min = df["spearman"].min()
+    y_max = df["spearman"].max()
+
+    # === QUADRANTS ===
+    fig.add_shape(
+        type="rect",
+        x0=0, x1=x_max, y0=0, y1=y_max,
+        fillcolor="rgba(0, 180, 0, 0.1)",  # vert doux
+        line_width=0,
+        layer="below"
+    )  # +pente / +spearman
+
+    fig.add_shape(
+        type="rect",
+        x0=0, x1=x_max, y0=y_min, y1=0,
+        fillcolor="rgba(0, 120, 255, 0.1)",  # bleu clair
+        line_width=0,
+        layer="below"
+    )  # +pente / -spearman
+
+    fig.add_shape(
+        type="rect",
+        x0=x_min, x1=0, y0=0, y1=y_max,
+        fillcolor="rgba(255, 200, 0, 0.15)",  # jaune
+        line_width=0,
+        layer="below"
+    )  # -pente / +spearman
+
+    fig.add_shape(
+        type="rect",
+        x0=x_min, x1=0, y0=y_min, y1=0,
+        fillcolor="rgba(255, 0, 0, 0.1)",  # rouge léger
+        line_width=0,
+        layer="below"
+    )  # -pente / -spearman
+
+    # LIGNES CENTRALES
+    fig.add_hline(y=0, line_color="black", line_width=2)
+    fig.add_vline(x=0, line_color="black", line_width=2)
+
+    fig.update_layout(
+        xaxis_title="Pente (slope)",
+        yaxis_title="Corrélation de Spearman",
+        legend_title="Matière",
+        template="simple_white"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)

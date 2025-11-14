@@ -275,8 +275,12 @@ with onglets[2]:
 
     st.subheader("Évolution des compétences CP → CM2")
 
-    st.markdown("""
-**Pente (slope) ** : intensité de la progression
+    col1, col2= st.columns([2,1])
+
+
+    with col1:
+        st.markdown("""
+**Pente (slope)** : intensité de la progression
   > La pente mesure l’ampleur du changement entre les niveaux d’une compétence.
   > **Positive → progression**, **négative → régression**, **faible → stagnation**.
 
@@ -286,28 +290,39 @@ with onglets[2]:
   > **proche de 0 → évolution instable (montée / descente)**.
 
     """)
+    with col2:
+        st.info(
+            """
+            À repérer :
+
+            - Les compétences avec une **pente faible ou négative**
+            → priorités.
+
+            - Les compétences ou domaines avec une **pente fortement positive** → points d’appui.
+
+            - Une **corrélation de Spearman élevée** : → progression instable.
+            """,
+            icon=":material/search:"
+        )
+
+
 
     # TOP & BOTTOM 3
-    st.subheader("Top 3 / Bottom 3 des évolutions")
-    top3 = df_evol_plot.sort_values("slope", ascending=False).head(3)
-    bot3 = df_evol_plot.sort_values("slope", ascending=True).head(3)
-    st.write("**Top 3 Progressions**")
-    st.dataframe(top3)
-    st.write("**Bottom 3 Régressions**")
-    st.dataframe(bot3)
+    with st.container(border=True):
+        st.subheader("Évolutions par compétences et par domaines")
+        col1, col2 = st.columns(2)
+        with col1 :
+            afficher_top_bottom_evolutions(df_evol_plot)
 
-    # Bar domaines
-    st.subheader("Progression par domaine")
-    df_dom = df_evol_plot.groupby("Domaine")["slope"].mean().reset_index()
-    fig_dom = px.bar(df_dom.sort_values("slope"), x="slope", y="Domaine", orientation='h')
-    st.plotly_chart(fig_dom, use_container_width=True)
+        with col2:
+            # Bar domaines
+            afficher_bar_domaine_prog(df_evol_plot)
 
-    # Scatter pente/spearman
-    st.subheader("Régularité vs Pente")
-    fig_rs = px.scatter(df_evol_plot, x="slope", y="spearman", color="Matière", hover_data=["Compétence"])
-    fig_rs.add_hline(y=0)
-    fig_rs.add_vline(x=0)
-    st.plotly_chart(fig_rs, use_container_width=True)
+
+
+
+
+    plot_regularity_vs_slope(df_evol_plot, palette)
 
     # Courbes d'évolution
     st.subheader("Courbes d'évolution par nombre de niveaux évalués")
