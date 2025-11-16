@@ -148,7 +148,7 @@ with st.container(border=True):
         a2.metric("Axe 2 – Automatisation", f"{pc2:.2f}")
         a3.metric("Axe 3 – Complexité", f"{pc3:.2f}")
 
-        st.caption("ℹ️ Les axes PCA sont centrés sur le réseau : **0 = moyenne**, valeurs positives = **au-dessus**, valeurs négatives = **en-dessous**. Plus l’écart à 0 est fort, plus la position est marquée.")
+        st.caption("Les axes PCA sont centrés sur le réseau : **0 = moyenne**, valeurs positives = **au-dessus**, valeurs négatives = **en-dessous**. Plus l’écart à 0 est fort, plus la position est marquée.")
 
         # Recommandations en fonction du profil
         st.markdown(get_recommandations_profil(profil))

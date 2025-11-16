@@ -28,7 +28,7 @@ df_feat, df_pca, pca, scaler, kmeans = calculer_clustering(df_feat)
 # =============================
 # Section : Indicateurs clés
 # =============================
-col1, col2, col3,col4 = st.columns(4)
+col1, col2, col3= st.columns(3)
 moy_globale = df["Valeur"].mean()
 moy_maths = df.loc[df["Matière"] == "Mathématiques", "Valeur"].mean()
 moy_fr = df.loc[df["Matière"] == "Français", "Valeur"].mean()
