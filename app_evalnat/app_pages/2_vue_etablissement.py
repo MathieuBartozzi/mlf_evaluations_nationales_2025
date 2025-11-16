@@ -36,12 +36,29 @@ df_feat, df_pca, pca, scaler, kmeans = calculer_clustering(df_feat)
 # 1️⃣ Sélecteur d’établissement
 # ---------------------------------------------------
 ecoles = sorted([str(e) for e in df["Nom_ecole"].dropna().unique()])
-ecole_selectionnee = st.selectbox("Choisissez un établissement :", ecoles)
+
+col1, col2 = st.columns([2,1])
+with col1 :
+    ecole_selectionnee = st.selectbox("Choisissez un établissement :", ecoles)
+
+with col2 :
+    st.space("small")
+    with st.popover("**Grille de lecture des indicateurs**") :
+        st.markdown("""
+- Les résultats reflètent **des tendances collectives**, pas des performances individuelles.
+- Les moyennes (générale, français, maths) situent l’établissement **par rapport au réseau**, mais ne décrivent pas l’hétérogénéité des classes.
+- Le graphique radar met en évidence :
+  - les **domaines d’appui** (au-dessus du réseau),
+  - les **domaines à renforcer** (en dessous du réseau),
+  - en tenant compte du fait que certains écarts sont **structurels** dans tout le Réseau mlfmonde.
+- La progression **CP→CM2** indique le niveau de cohérence verticale :
+  - évolution régulière → continuité pédagogique stabilisée,
+  - évolution en dents de scie → variations de cohortes, de pratiques ou d’organisation.
+- Le **profil PCA** (fondamentaux, automatisation, complexité) ne classe pas l’établissement :
+  - il aide à **cibler 2–3 leviers prioritaires** pour le pilotage pédagogique.
+""")
 
 df_ecole = df[df["Nom_ecole"] == ecole_selectionnee]
-
-# Construction clustering réseau (une seule fois)
-
 
 
 st.subheader(f"{ecole_selectionnee}")
@@ -49,15 +66,9 @@ st.subheader(f"{ecole_selectionnee}")
 # ---------------------------------------------------
 # 2️⃣ Carte d’identité de l’établissement
 # ---------------------------------------------------
-# st.subheader("Carte d’identité")
 
 # # Récupération des infos administratives
 info_ecole = df_ecole[["Réseau", "Statut", "Homologué"]].drop_duplicates().iloc[0]
-
-# col1, col2, col3 = st.columns(3)
-# col1.metric("Moyenne générale", f"{df_ecole['Valeur'].mean():.1f}%", border=True)
-# col2.metric("Français", f"{df_ecole[df_ecole['Matière']=='Français']['Valeur'].mean():.1f}%",border=True)
-# col3.metric("Mathématiques", f"{df_ecole[df_ecole['Matière']=='Mathématiques']['Valeur'].mean():.1f}%",border=True)
 
 # --- Calculs ---
 moy_gen, delta_gen = get_moyenne_et_delta(df, df_ecole)
@@ -86,18 +97,6 @@ col3.metric(
     border=True
 )
 
-# Tableau des infos
-# st.table(pd.DataFrame({
-#     "Réseau": [info_ecole["Réseau"]],
-#     "Statut": [info_ecole["Statut"]],
-#     "Homologué": [info_ecole["Homologué"]],
-#     "Nombre de niveaux": [df_ecole["Niveau"].nunique()]
-# }))
-
-# ---------------------------------------------------
-# 3️⃣ Radar des moyennes par domaine
-# ---------------------------------------------------
-# st.subheader("Forces et faiblesses par domaine")
 
 
 with st.container(border=True):

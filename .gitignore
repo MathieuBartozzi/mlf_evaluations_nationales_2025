@@ -54,3 +54,6 @@ logs/
 .env.*
 *.env.local
 
+
+scripts/pca_loadings.csv
+scripts/eda.ipynb

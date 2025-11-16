@@ -1,135 +1,7 @@
-# import numpy as np
-# import pandas as pd
-# from scipy.stats import spearmanr
-# import plotly.express as px
-# import plotly.graph_objects as go
-# import sys, os
-# from scipy.stats import linregress, spearmanr
-
-# # === Import des configs et fonctions utilitaires ===
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-# from config import *
-# from fonctions_viz import *
-# from clustering import *
-
-
-
-# # ==========================================================
-# # 1. CHARGEMENT DES DONNÉES DE SESSION
-# # ==========================================================
-
-# df = st.session_state.get("df")
-# df_coordo = st.session_state.get("df_coordo")
-
-# if df is None or df.empty:
-#     st.warning("Aucune donnée disponible. Ouvrez d’abord la page Home.")
-#     st.stop()
-
-# df["Valeur"] = df["Valeur"] * 100
-
-# ordre_niveaux = ["CP", "CE1", "CE2", "CM1", "CM2"]
-
-# # ==========================================================
-# # 3. INDICATEURS RÉSEAU
-# # ==========================================================
-
-# st.header("📊 Analyse réseau & Profilage des établissements")
-
-# st.markdown("""
-# ## 🧠 Comprendre les indicateurs
-
-# - **Pente (slope)** : progression globale (positive = progresse, négative = baisse)
-# - **Spearman** : régularité de la progression (1 = régulier, 0 = irrégulier)
-# - **Idéal** : **pente positive + Spearman élevé**
-# """)
-
-# df_reseau = (
-#     df.groupby(["Matière", "Domaine", "Compétence", "Niveau"])
-#       ["Valeur"].mean()
-#       .reset_index()
-# )
-# df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x))
-
-# # Calcul des indicateurs
-# df_evol_reseau = (
-#     df_reseau.groupby(["Matière", "Domaine", "Compétence"])
-#       .apply(lambda g: pd.Series({
-#           "slope": evolution_slope(g),
-#           "spearman": evolution_spearman(g),
-#           "delta": delta_first_last(g),
-#           "nb_niveaux": g["niveau_code"].nunique()
-#       }))
-#       .reset_index()
-# )
-
-# df_plot = df_evol_reseau[df_evol_reseau["nb_niveaux"] >= 2]
-
-
-# # ==========================================================
-# # 4. GRAPHIQUES GLOBAUX RÉSEAU
-# # ==========================================================
-
-# st.subheader("Distribution des pentes")
-# fig1 = px.histogram(df_plot, x="slope", color="Matière", nbins=25)
-# st.plotly_chart(fig1, use_container_width=True)
-
-# st.write("➡ À droite : progression forte — À gauche : régression.")
-
-# st.subheader("Progression vs régularité")
-# fig2 = px.scatter(
-#     df_plot,
-#     x="slope", y="spearman",
-#     color="Matière",
-#     hover_data=["Compétence", "Domaine"]
-# )
-# fig2.add_hline(y=0, line_dash="dot")
-# fig2.add_vline(x=0, line_dash="dot")
-# st.plotly_chart(fig2, use_container_width=True)
-
-# # Classements
-# st.header("🏆 Classements des compétences")
-
-# col1, col2 = st.columns(2)
-# with col1:
-#     st.subheader("Top progressions")
-#     st.dataframe(df_plot.sort_values("slope", ascending=False).head(10))
-
-# with col2:
-#     st.subheader("Top régressions")
-#     st.dataframe(df_plot.sort_values("slope", ascending=True).head(10))
-
-# st.subheader("Compétences les plus irrégulières")
-# st.dataframe(df_plot[df_plot["spearman"] < 0.3].sort_values("spearman").head(10))
-
-
-# # ==========================================================
-# # 5. EXPLORATION D’UNE COMPÉTENCE
-# # ==========================================================
-
-# st.header("🔍 Explorer une compétence en détail")
-
-# comp_choice = st.selectbox("Sélectionnez une compétence", df["Compétence"].unique())
-
-# df_comp = df_reseau[df_reseau["Compétence"] == comp_choice].sort_values("niveau_code")
-
-# fig3 = px.line(
-#     df_comp,
-#     x="Niveau", y="Valeur",
-#     markers=True,
-#     color="Niveau",
-#     title=f"Évolution de : {comp_choice}"
-# )
-# st.plotly_chart(fig3, use_container_width=True)
-
-# Nouveau code complet pour 3_exploration_avancee.py
-# (Version avec : Stat globales, Discriminantes, Évolution, Corrélations Améliorées)
-
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import spearmanr
 from fonctions_viz import *
 
 # =====================================================
@@ -143,7 +15,6 @@ if df is None or df.empty:
     st.stop()
 
 df["Valeur"] = df["Valeur"] * 100
-ordre_niveaux = ["CP", "CE1", "CE2", "CM1", "CM2"]
 
 # =====================================================
 # Fonctions évolution
@@ -191,13 +62,13 @@ df_evol_plot = df_evol[df_evol["nb_niveaux"] >= 2]
 # =====================================================
 # Interface Principale
 # =====================================================
-st.title("🔎 Exploration avancée des compétences")
+st.subheader("Exploration avancée des compétences")
 
 onglets = st.tabs([
     "Statistiques globales",
     "Compétences discriminantes",
     "Évolution CP → CM2",
-    "Corrélations améliorées"
+    "Grille de lecture",
 ])
 
 # =====================================================
@@ -223,7 +94,6 @@ with onglets[0]:
 
         with col3:
             vue_top_bottom_matiere(df, "Mathématiques", n=7)
-
 
 # =====================================================
 # ONGLET 2 : Compétences discriminantes
@@ -264,9 +134,6 @@ with onglets[1]:
 
         with col2:
             st.dataframe(df_math, use_container_width=True)
-
-
-
 
 # =====================================================
 # ONGLET 3 : Évolution CP → CM2
@@ -310,48 +177,89 @@ with onglets[2]:
     # TOP & BOTTOM 3
     with st.container(border=True):
         st.subheader("Évolutions par compétences et par domaines")
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1 :
             afficher_top_bottom_evolutions(df_evol_plot)
 
         with col2:
             # Bar domaines
+            st.space("small")
             afficher_bar_domaine_prog(df_evol_plot)
+        with col3:
+            st.space("small")
+            plot_regularity_vs_slope(df_evol_plot, palette)
 
-
-
-
-
-    plot_regularity_vs_slope(df_evol_plot, palette)
-
-    # Courbes d'évolution
-    st.subheader("Courbes d'évolution par nombre de niveaux évalués")
-    nb = st.selectbox("Sélectionner le nombre de niveaux", [2,3,4,5])
-    comps = df_evol[df_evol["nb_niveaux"] == nb]["Compétence"].unique()
-
-    for c in comps:
-        df_c = df_reseau[df_reseau["Compétence"] == c].sort_values("niveau_code")
-        fig_c = px.line(df_c, x="Niveau", y="Valeur", markers=True, title=c)
-        st.plotly_chart(fig_c, use_container_width=True)
+    with st.container(border=True):
+        st.subheader("Évolutions par niveau")
+        nb = st.pills("Sélectionner le nombre de niveaux", [2,3,4,5])
+        afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=nb, n_cols=4)
 
 # =====================================================
 # ONGLET 4 : Corrélations améliorées
 # =====================================================
 with onglets[3]:
+    st.markdown("""
+### Grille de lecture – Exploration avancée des compétences
 
-    st.header("🔗 Corrélations améliorées des compétences")
+Cette page permet d’examiner les compétences en profondeur, non pas à l’échelle d’un établissement, mais à l’échelle des **dynamiques pédagogiques du réseau**. Les trois vues complémentaires aident à comprendre la structure globale des apprentissages du CP au CM2.
 
-    df_corr = df.pivot_table(index="Nom_ecole", columns="Compétence", values="Valeur")
-    corr_matrix = df_corr.corr()
+---
 
-    choice = st.radio("Type de heatmap", ["Standard", "Corrélations significatives"], horizontal=True)
+### 1. Statistiques globales des compétences
 
-    if choice == "Standard":
-        fig_corr = px.imshow(corr_matrix, color_continuous_scale="RdBu_r")
-        st.plotly_chart(fig_corr, use_container_width=True)
+- Les histogrammes indiquent la **répartition des niveaux de maîtrise** :
+  - forte concentration entre 70–80 % → compétences globalement stabilisées dans le réseau ;
+  - présence de nombreuses compétences < 65 % → fragilités structurelles partagées.
+- Les listes “+ maîtrisées / – maîtrisées” révèlent :
+  - les compétences **généralement robustes** dans le Mlfmonde ;
+  - les compétences **traditionnellement exigeantes** (ex. étude de la langue, automatisation mathématique), pour lesquelles un écart local est souvent normal.
+- Cette vue aide à **contextualiser les difficultés locales** dans une réalité réseau plus large.
 
-    else:
-        seuil = st.slider("Seuil de significativité", 0.0, 1.0, 0.5)
-        mask = corr_matrix.abs() >= seuil
-        fig_corr2 = px.imshow(corr_matrix.where(mask), color_continuous_scale="RdBu_r")
-        st.plotly_chart(fig_corr2, use_container_width=True)
+---
+
+### 2. Compétences discriminantes
+
+- Une compétence est “discriminante” si les écarts entre établissements y sont **très importants**.
+- Le niveau de dispersion (écart-type) est l’indicateur clé :
+  - dispersion < 8 → homogénéité réseau ;
+  - dispersione entre 8–12 → variations significatives ;
+  - dispersion > 12 → compétence fortement différenciante.
+- Les points en zone rouge signalent des compétences :
+  - souvent **trop complexes** ou instables au niveau réseau,
+  - fortement dépendantes des pratiques pédagogiques.
+- Cette vue permet de :
+  - repérer les compétences où un **accompagnement réseau** serait le plus pertinent,
+  - relativiser les écarts d’un établissement lorsque la compétence est **globalement très dispersive**.
+
+---
+
+### 3. Progression CP → CM2
+
+- La **pente (slope)** indique l’évolution de la compétence :
+  - positive → progression attendue ;
+  - négative → régression à surveiller ;
+  - faible → stagnation.
+- La **corrélation de Spearman** mesure la cohérence :
+  - élevée → progression régulière et structurée ;
+  - faible → évolution instable ou peu lisible.
+- À repérer en priorité :
+  - les compétences avec **pente négative ou irrégulière** → leviers de continuité pédagogique ;
+  - les compétences avec **pente fortement positive** → appuis pour la formation et la mutualisation.
+- Cette vue met en lumière la **cohérence verticale** réelle des apprentissages du CP au CM2.
+
+---
+
+### 4. Conclusion
+
+Cette page donne une vue fine et transversale des compétences à l’échelle du réseau.
+Elle permet de repérer :
+- les compétences structurellement fortes ou fragiles,
+- celles qui génèrent le plus d’écarts entre établissements,
+- celles où la progression CP→CM2 est la plus cohérente ou la plus instable.
+
+Elle constitue un appui pour **orienter les priorités d’analyse**, les actions de formation et les accompagnements pédagogiques ciblés.
+
+
+
+
+                """)

@@ -6,6 +6,7 @@ from config import *
 import numpy as np
 import plotly.express as px
 import statsmodels.api as sm
+import math
 
 
 
@@ -476,7 +477,7 @@ def plot_pie_clusters(df_feat):
                 yanchor="bottom",
                 y=-0.2,               # sous le graphique
                 xanchor="center",
-                x=0.5
+                x=0.5,
             )
         )
 
@@ -821,31 +822,31 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
     # ===============================
     ymax = df_disp["std"].max() + 2
 
-    fig.add_shape(type="rect", x0=0, x1=50, y0=0, y1=ymax,
-                  fillcolor="rgba(255,0,0,0.06)", line_width=0)
+    # fig.add_shape(type="rect", x0=0, x1=50, y0=0, y1=ymax,
+    #               fillcolor="rgba(255,0,0,0.06)", line_width=0)
 
-    fig.add_shape(type="rect", x0=85, x1=100, y0=0, y1=ymax,
-                  fillcolor="rgba(0,150,255,0.08)", line_width=0)
+    # fig.add_shape(type="rect", x0=85, x1=100, y0=0, y1=ymax,
+    #               fillcolor="rgba(0,150,255,0.08)", line_width=0)
 
     fig.add_shape(type="rect", x0=50, x1=85, y0=seuil_std, y1=ymax,
-                  fillcolor="rgba(255,165,0,0.10)", line_width=0)
+                  fillcolor="rgba(255,0,0,0.06)", line_width=0)
 
     # ===============================
     # 5. Lignes de référence
     # ===============================
-    fig.add_vline(x=50, line_dash="dot", line_color="red", opacity=0.4)
-    fig.add_vline(x=85, line_dash="dot", line_color="blue", opacity=0.4)
+    fig.add_vline(x=50, line_dash="dot", opacity=0.4)
+    fig.add_vline(x=85, line_dash="dot", opacity=0.4)
     fig.add_hline(y=seuil_std, line_dash="dot", line_color="orange", opacity=0.4)
 
     # ===============================
     # 6. Annotations
     # ===============================
-    fig.add_annotation(x=45, y=ymax - 0.5, text="Trop difficile", showarrow=False,
-                       font=dict(color="red", size=12))
-    fig.add_annotation(x=92, y=ymax - 0.5, text="Trop facile", showarrow=False,
-                       font=dict(color="blue", size=12))
-    fig.add_annotation(x=67, y=ymax - 0.5, text="Instable", showarrow=False,
-                       font=dict(color="darkorange", size=12))
+    fig.add_annotation(x=45, y=ymax - 0.5, text="Difficiles", showarrow=False,
+                       font=dict(size=12))
+    fig.add_annotation(x=92, y=ymax - 0.5, text="Stables", showarrow=False,
+                       font=dict(size=12))
+    fig.add_annotation(x=67, y=ymax - 0.5, text="À surveiller", showarrow=False,
+                       font=dict(size=12))
 
     # ===============================
     # 7. Courbe LOWESS
@@ -945,6 +946,7 @@ def afficher_top_bottom_evolutions(df):
     st.write("**Bottom 3 régressions (compétence)**")
     st.dataframe(bottom3, use_container_width=True)
 
+
 def afficher_bar_domaine_prog(df):
     """Affiche un barplot des progressions moyennes par domaine (colonne slope)."""
 
@@ -960,77 +962,49 @@ def afficher_bar_domaine_prog(df):
         .sort_values("slope")
     )
 
-    # Ajout d'une colonne "Couleur" pour différencier + / -
-    df_dom["Couleur"] = df_dom["slope"].apply(lambda x: "Progression" if x >= 0 else "Régression")
-
-    # Palette personnalisée
-    couleurs = {
-        "Progression": "#2ecc71",   # Vert
-        "Régression": "#e74c3c"     # Rouge
-    }
-     # Construction graphique
-    fig_dom = px.bar(
-        df_dom,
-        x="slope",
-        y="Domaine",
-        orientation="h",
-        color="Couleur",
-        color_discrete_map=couleurs,
-        height=500
+    df_dom["Couleur"] = df_dom["slope"].apply(
+        lambda x: "Progression" if x >= 0 else "Régression"
     )
-    fig_dom.update_yaxes(title=None)
-    fig_dom.update_layout(legend_title_text="")
+
+    fig = px.bar(
+        df_dom,
+        x="Domaine",
+        y="slope",
+        color="Couleur",
+        color_discrete_map=palette,
+        height=550
+    )
+
+    # ---- AXES SIMPLIFIÉS ----
+    fig.update_xaxes(
+        title=None,       # ❌ enlève "Domaine"
+        tickangle=35      # Rotation lisible
+    )
+
+    fig.update_yaxes(
+        title="Pente (slope)"   # ✔️ remet slope à gauche
+    )
+
+    # ---- LÉGENDE ----
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=40, b=0),
+        legend_title=None,  # ❌ enlève "Couleur"
+        legend=dict(
+            orientation="h",
+            y=1.15,
+            x=0.5,
+            xanchor="center",
+            font=dict(size=14)
+        ),
+        template="simple_white"  # ✔️ style propre et sobre
+    )
+    fig.add_hline(y=0, line_color="black", line_width=1)
+
+    st.plotly_chart(fig, use_container_width=True)
 
 
 
-    # Ligne verticale à 0
-    fig_dom.add_vline(x=0, line_width=1, line_color="black")
-
-    st.plotly_chart(fig_dom, use_container_width=True)
-
-
-
-# def plot_regularity_vs_slope(df, palette):
-#     """
-#     Affiche le graphique Régularité vs Pente (spearman vs slope)
-#     avec une palette personnalisée.
-
-#     Parameters
-#     ----------
-#     df : pandas.DataFrame
-#         Doit contenir les colonnes : "slope", "spearman", "Matière", "Compétence".
-#     palette : dict
-#         Dictionnaire couleurs ex : {"Français": "#1f77b4", "Mathématiques": "#aec7e8"}
-#     """
-
-#     st.subheader("Régularité vs Pente")
-
-#     fig = px.scatter(
-#         df,
-#         x="slope",
-#         y="spearman",
-#         color="Matière",
-#         hover_data=["Compétence"],
-#         color_discrete_map=palette,   # 🎨 ta palette personnalisée
-#     )
-
-#     # Lignes verticales & horizontales
-#     fig.add_hline(y=0, line_color="black", line_width=2)
-#     fig.add_vline(x=0, line_color="black", line_width=2)
-
-#     # Ajout d’un peu de style (optionnel)
-#     fig.update_layout(
-#         xaxis_title="Pente (slope)",
-#         yaxis_title="Corrélation de Spearman",
-#         legend_title="Matière",
-#         template="simple_white"
-#     )
-
-#     st.plotly_chart(fig, use_container_width=True)
-
-
-def plot_regularity_vs_slope(df, palette, point_size=12):
-    st.subheader("Régularité vs Pente")
+def plot_regularity_vs_slope(df, palette):
 
     # FIGURE DE BASE
     fig = px.scatter(
@@ -1040,8 +1014,7 @@ def plot_regularity_vs_slope(df, palette, point_size=12):
         color="Matière",
         hover_data=["Compétence"],
         color_discrete_map=palette,
-        size=[point_size] * len(df),
-        size_max=point_size
+        height=500
     )
 
     # limites pour les zones
@@ -1084,14 +1057,68 @@ def plot_regularity_vs_slope(df, palette, point_size=12):
     )  # -pente / -spearman
 
     # LIGNES CENTRALES
-    fig.add_hline(y=0, line_color="black", line_width=2)
-    fig.add_vline(x=0, line_color="black", line_width=2)
+    fig.add_hline(y=0, line_color="black", line_width=1)
+    fig.add_vline(x=0, line_color="black", line_width=1)
 
     fig.update_layout(
+        legend=dict(
+            orientation="h",
+            y=1.18,
+            x=0.5,
+            xanchor="center",
+            font=dict(size=14)
+        ),
+        margin=dict(l=0, r=0, t=40, b=0),
         xaxis_title="Pente (slope)",
         yaxis_title="Corrélation de Spearman",
-        legend_title="Matière",
+        legend_title="",
         template="simple_white"
+
     )
+    fig.update_traces(marker=dict(size=10, line=dict(width=0)))
 
     st.plotly_chart(fig, use_container_width=True)
+
+
+def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
+    comps = df_evol[df_evol["nb_niveaux"] == nb_niveaux]["Compétence"].unique()
+
+    # 👉 Si aucune compétence pour ce nombre de niveaux, afficher un message clair
+    if len(comps) == 0:
+        st.info(
+            f"Aucune compétence n’a été évaluée sur {nb_niveaux} niveaux. "
+            "Essayez un autre nombre de niveaux pour visualiser des progressions."
+        )
+        return  # On sort proprement de la fonction
+
+    n = len(comps)
+    n_rows = math.ceil(n / n_cols)
+
+    index = 0
+    for r in range(n_rows):
+        cols = st.columns(n_cols)
+
+        for col in cols:
+            if index >= n:
+                break
+
+            c = comps[index]
+            df_c = df_reseau[df_reseau["Compétence"] == c].sort_values("niveau_code")
+
+            fig_c = px.line(
+                df_c,
+                x="Niveau",
+                y="Valeur",
+                markers=True,
+                height=300
+            )
+
+            # 👉 Ce que tu veux :
+
+            fig_c.update_layout(title="")   # supprime le titre
+            fig_c.update_yaxes(title="")
+            fig_c.update_xaxes(title=c)
+            fig_c.update_xaxes(title_font=dict(size=11))
+
+            col.plotly_chart(fig_c, use_container_width=True)
+            index += 1
