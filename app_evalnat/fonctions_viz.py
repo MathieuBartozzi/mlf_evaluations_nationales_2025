@@ -186,7 +186,6 @@ def afficher_top_bottom(df):
 
     grouped = df.groupby(choix, as_index=False)["Valeur"].mean().round(2)
     grouped = grouped.sort_values(by="Valeur", ascending=False)
-    # grouped = grouped.rename(columns={'Nom_ecole': 'École'})
 
     top3 = grouped.head(3).reset_index(drop=True)
     bottom3 = grouped.tail(3).sort_values(by="Valeur", ascending=True).reset_index(drop=True)
@@ -196,6 +195,7 @@ def afficher_top_bottom(df):
 
     st.write(f"**Bottom 3 {choix_label.lower()}s**")
     st.dataframe(bottom3, use_container_width=True)
+
 
 
 def graphique_moyenne_ou_ecart(df, palette):
@@ -851,12 +851,12 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
     # ===============================
     # 7. Courbe LOWESS
     # ===============================
-    lowess = sm.nonparametric.lowess(df_disp["std"], df_disp["mean"], frac=0.35)
+    lowess = sm.nonparametric.lowess(df_disp["std"], df_disp["mean"], frac=0.2)
     fig.add_trace(go.Scatter(
         x=lowess[:, 0],
         y=lowess[:, 1],
         mode="lines",
-        line=dict(color="black", width=2, dash="dash"),
+        line=dict(color="lightgray", width=1, dash="dot"),
         name="Tendance"
     ))
 
@@ -927,6 +927,8 @@ def afficher_top_bottom_evolutions(df):
         .round(3)
         .sort_values(by="slope", ascending=False)
     )
+    grouped = grouped.rename(columns={"slope": "Progression", "spearman": "Régularité"})
+
 
     # Top 3
     top3 = grouped.head(3).reset_index(drop=True)
@@ -934,7 +936,7 @@ def afficher_top_bottom_evolutions(df):
     # Bottom 3
     bottom3 = (
         grouped.tail(3)
-        .sort_values(by="slope", ascending=True)
+        .sort_values(by="Progression", ascending=True)
         .reset_index(drop=True)
     )
 
@@ -947,137 +949,140 @@ def afficher_top_bottom_evolutions(df):
     st.dataframe(bottom3, use_container_width=True)
 
 
-def afficher_bar_domaine_prog(df):
-    """Affiche un barplot des progressions moyennes par domaine (colonne slope)."""
+# def afficher_bar_domaine_prog(df):
+#     """Affiche un barplot des progressions moyennes par domaine (colonne slope)."""
 
-    colonnes_requises = {"Domaine", "slope"}
-    if not colonnes_requises.issubset(df.columns):
-        st.error("Le DataFrame doit contenir les colonnes : Domaine, slope.")
-        return
+#     colonnes_requises = {"Domaine", "slope"}
+#     if not colonnes_requises.issubset(df.columns):
+#         st.error("Le DataFrame doit contenir les colonnes : Domaine, slope.")
+#         return
 
-    df_dom = (
-        df.groupby("Domaine")["slope"]
-        .mean()
-        .reset_index()
-        .sort_values("slope")
-    )
+#     df_dom = (
+#         df.groupby("Domaine")["slope"]
+#         .mean()
+#         .reset_index()
+#         .sort_values("slope")
+#     )
 
-    df_dom["Couleur"] = df_dom["slope"].apply(
-        lambda x: "Progression" if x >= 0 else "Régression"
-    )
+#     df_dom["Couleur"] = df_dom["slope"].apply(
+#         lambda x: "Progression" if x >= 0 else "Régression"
+#     )
 
-    fig = px.bar(
-        df_dom,
-        x="Domaine",
-        y="slope",
-        color="Couleur",
-        color_discrete_map=palette,
-        height=550
-    )
+#     fig = px.bar(
+#         df_dom,
+#         x="Domaine",
+#         y="slope",
+#         color="Couleur",
+#         color_discrete_map=palette,
+#         height=550
+#     )
 
-    # ---- AXES SIMPLIFIÉS ----
-    fig.update_xaxes(
-        title=None,       # ❌ enlève "Domaine"
-        tickangle=35      # Rotation lisible
-    )
+#     # ---- AXES SIMPLIFIÉS ----
+#     fig.update_xaxes(
+#         title=None,       # ❌ enlève "Domaine"
+#         tickangle=35      # Rotation lisible
+#     )
 
-    fig.update_yaxes(
-        title="Pente (slope)"   # ✔️ remet slope à gauche
-    )
+#     fig.update_yaxes(
+#         title="Pente (slope)"   # ✔️ remet slope à gauche
+#     )
 
-    # ---- LÉGENDE ----
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=40, b=0),
-        legend_title=None,  # ❌ enlève "Couleur"
-        legend=dict(
-            orientation="h",
-            y=1.15,
-            x=0.5,
-            xanchor="center",
-            font=dict(size=14)
-        ),
-        template="simple_white"  # ✔️ style propre et sobre
-    )
-    fig.add_hline(y=0, line_color="black", line_width=1)
+#     # ---- LÉGENDE ----
+#     fig.update_layout(
+#         margin=dict(l=0, r=0, t=40, b=0),
+#         legend_title=None,  # ❌ enlève "Couleur"
+#         legend=dict(
+#             orientation="h",
+#             y=1.15,
+#             x=0.5,
+#             xanchor="center",
+#             font=dict(size=14)
+#         ),
+#         template="simple_white"  # ✔️ style propre et sobre
+#     )
+#     fig.add_hline(y=0, line_color="black", line_width=1)
 
-    st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, use_container_width=True)
 
 
 
-def plot_regularity_vs_slope(df, palette):
+# def plot_regularity_vs_slope(df, palette):
 
-    # FIGURE DE BASE
-    fig = px.scatter(
-        df,
-        x="slope",
-        y="spearman",
-        color="Matière",
-        hover_data=["Compétence"],
-        color_discrete_map=palette,
-        height=500
-    )
+#     df = df.copy()
+#     df["spearman"] = df["spearman"].abs()
 
-    # limites pour les zones
-    x_min = df["slope"].min()
-    x_max = df["slope"].max()
-    y_min = df["spearman"].min()
-    y_max = df["spearman"].max()
+#     # FIGURE DE BASE
+#     fig = px.scatter(
+#         df,
+#         x="slope",
+#         y="spearman",
+#         color="Domaine",
+#         # hover_data=["Compétence"],
+#         color_discrete_map=palette,
+#         height=500
+#     )
 
-    # === QUADRANTS ===
-    fig.add_shape(
-        type="rect",
-        x0=0, x1=x_max, y0=0, y1=y_max,
-        fillcolor="rgba(0, 180, 0, 0.1)",  # vert doux
-        line_width=0,
-        layer="below"
-    )  # +pente / +spearman
+#     # limites pour les zones
+#     x_min = df["slope"].min()
+#     x_max = df["slope"].max()
+#     y_min = df["spearman"].min()
+#     y_max = df["spearman"].max()
 
-    fig.add_shape(
-        type="rect",
-        x0=0, x1=x_max, y0=y_min, y1=0,
-        fillcolor="rgba(0, 120, 255, 0.1)",  # bleu clair
-        line_width=0,
-        layer="below"
-    )  # +pente / -spearman
+#     # === QUADRANTS ===
+#     fig.add_shape(
+#         type="rect",
+#         # x0=0, x1=x_max, y0=0, y1=y_max,
+#         fillcolor="rgba(0, 180, 0, 0.1)",  # vert doux
+#         line_width=0,
+#         layer="below"
+#     )  # +pente / +spearman
 
-    fig.add_shape(
-        type="rect",
-        x0=x_min, x1=0, y0=0, y1=y_max,
-        fillcolor="rgba(255, 200, 0, 0.15)",  # jaune
-        line_width=0,
-        layer="below"
-    )  # -pente / +spearman
+#     fig.add_shape(
+#         type="rect",
+#         x0=0, x1=x_max, y0=y_min, y1=0,
+#         fillcolor="rgba(0, 120, 255, 0.1)",  # bleu clair
+#         line_width=0,
+#         layer="below"
+#     )  # +pente / -spearman
 
-    fig.add_shape(
-        type="rect",
-        x0=x_min, x1=0, y0=y_min, y1=0,
-        fillcolor="rgba(255, 0, 0, 0.1)",  # rouge léger
-        line_width=0,
-        layer="below"
-    )  # -pente / -spearman
+#     fig.add_shape(
+#         type="rect",
+#         x0=x_min, x1=0, y0=0, y1=y_max,
+#         fillcolor="rgba(255, 200, 0, 0.15)",  # jaune
+#         line_width=0,
+#         layer="below"
+#     )  # -pente / +spearman
 
-    # LIGNES CENTRALES
-    fig.add_hline(y=0, line_color="black", line_width=1)
-    fig.add_vline(x=0, line_color="black", line_width=1)
+#     fig.add_shape(
+#         type="rect",
+#         x0=x_min, x1=0, y0=y_min, y1=0,
+#         fillcolor="rgba(255, 0, 0, 0.1)",  # rouge léger
+#         line_width=0,
+#         layer="below"
+#     )  # -pente / -spearman
 
-    fig.update_layout(
-        legend=dict(
-            orientation="h",
-            y=1.18,
-            x=0.5,
-            xanchor="center",
-            font=dict(size=14)
-        ),
-        margin=dict(l=0, r=0, t=40, b=0),
-        xaxis_title="Pente (slope)",
-        yaxis_title="Corrélation de Spearman",
-        legend_title="",
-        template="simple_white"
+#     # LIGNES CENTRALES
+#     fig.add_hline(y=0, line_color="black", line_width=1)
+#     fig.add_vline(x=0, line_color="black", line_width=1)
 
-    )
-    fig.update_traces(marker=dict(size=10, line=dict(width=0)))
+#     fig.update_layout(
+#         legend=dict(
+#             orientation="h",
+#             y=1.18,
+#             x=0.5,
+#             xanchor="center",
+#             font=dict(size=14)
+#         ),
+#         margin=dict(l=0, r=0, t=40, b=0),
+#         xaxis_title="Pente (slope)",
+#         yaxis_title="Corrélation de Spearman",
+#         legend_title="",
+#         template="simple_white"
 
-    st.plotly_chart(fig, use_container_width=True)
+#     )
+#     fig.update_traces(marker=dict(size=10, line=dict(width=0)))
+
+#     st.plotly_chart(fig, use_container_width=True)
 
 
 def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
@@ -1092,33 +1097,176 @@ def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
         return  # On sort proprement de la fonction
 
     n = len(comps)
-    n_rows = math.ceil(n / n_cols)
+    # n_rows = math.ceil(n / n_cols)
 
     index = 0
-    for r in range(n_rows):
-        cols = st.columns(n_cols)
+    # for r in range(n_rows):
+    cols = st.columns(n_cols)
 
-        for col in cols:
-            if index >= n:
-                break
+    for col in cols:
+        if index >= n:
+            break
 
-            c = comps[index]
-            df_c = df_reseau[df_reseau["Compétence"] == c].sort_values("niveau_code")
+        c = comps[index]
+        df_c = df_reseau[df_reseau["Compétence"] == c].sort_values("niveau_code")
 
-            fig_c = px.line(
-                df_c,
-                x="Niveau",
-                y="Valeur",
-                markers=True,
-                height=300
-            )
+        fig_c = px.line(
+            df_c,
+            x="Niveau",
+            y="Valeur",
+            markers=True,
+            height=300
+        )
 
-            # 👉 Ce que tu veux :
+        fig_c.update_layout(
+           title=dict(
+               text=c,
+               font=dict(size=10),
+               x=0
+               )
+           )
+        fig_c.update_yaxes(title="")
+        fig_c.update_xaxes(title="")
+        # fig_c.update_xaxes(title_font=dict(size=11))
 
-            fig_c.update_layout(title="")   # supprime le titre
-            fig_c.update_yaxes(title="")
-            fig_c.update_xaxes(title=c)
-            fig_c.update_xaxes(title_font=dict(size=11))
+        col.plotly_chart(fig_c, use_container_width=True)
+        index += 1
 
-            col.plotly_chart(fig_c, use_container_width=True)
-            index += 1
+
+
+# def afficher_bars_progression_regularity(df, palette):
+#     """
+#     Affiche un bar chart comparatif normalisé (entre -1 et +1)
+#     montrant la progression (pente) et la régularité (|Spearman|)
+#     par domaine.
+
+#     Le df doit contenir les colonnes :
+#         - 'Domaine'
+#         - 'slope'
+#         - 'spearman'
+#     """
+
+#     colonnes_requises = {"Domaine", "slope", "spearman"}
+#     if not colonnes_requises.issubset(df.columns):
+#         st.error("Le DataFrame doit contenir : Domaine, slope, spearman.")
+#         return
+
+#     df_plot = df.copy()
+#     df_plot["spearman_abs"] = df_plot["spearman"].abs()
+
+#     # --- Normalisation min–max sécurisée ---
+#     for col in ["slope", "spearman_abs"]:
+#         cmin = df_plot[col].min()
+#         cmax = df_plot[col].max()
+#         if cmax - cmin == 0:
+#             df_plot[col + "_norm"] = 0
+#         else:
+#             df_plot[col + "_norm"] = (df_plot[col] - cmin) / (cmax - cmin) * 2 - 1
+
+#     # --- Préparation long format pour plotly ---
+#     df_long = df_plot.melt(
+#         id_vars=["Domaine"],
+#         value_vars=["slope_norm", "spearman_abs_norm"],
+#         var_name="Indicateur",
+#         value_name="Valeur"
+#     )
+
+#     # --- Bar chart ---
+#     fig = px.bar(
+#         df_long,
+#         x="Valeur",
+#         y="Domaine",
+#         color="Indicateur",
+#         barmode="group",
+#         orientation="h",
+#         color_discrete_map=palette
+#     )
+
+#     fig.update_layout(
+#         # title="Progression et régularité  par domaine",
+#         template="simple_white",
+#         height=500,
+#         legend=dict(
+#             orientation="h",
+#             y=-0.15,
+#             x=0.5,
+#             xanchor="center"
+#         ),
+#         xaxis=dict(title=""),
+#         yaxis=dict(title="")
+#     )
+
+#     st.plotly_chart(fig, use_container_width=True)
+
+def afficher_bars_progression_regularity(df, palette):
+    """
+    Affiche un bar chart comparatif normalisé :
+        - pente ∈ [-1, +1]
+        - régularité (|Spearman|) ∈ [0, +1]
+    par domaine.
+    """
+
+    colonnes_requises = {"Domaine", "slope", "spearman"}
+    if not colonnes_requises.issubset(df.columns):
+        st.error("Le DataFrame doit contenir : Domaine, slope, spearman.")
+        return
+
+    df_plot = df.copy()
+    df_plot["spearman_abs"] = df_plot["spearman"].abs()
+
+    # --- Normalisation pente en [-1, 1] ---
+    cmin = df_plot["slope"].min()
+    cmax = df_plot["slope"].max()
+    if cmax - cmin == 0:
+        df_plot["slope_norm"] = 0
+    else:
+        df_plot["slope_norm"] = (df_plot["slope"] - cmin) / (cmax - cmin) * 2 - 1
+
+    # --- Normalisation spearman_abs en [0, 1] ---
+    smin = df_plot["spearman_abs"].min()
+    smax = df_plot["spearman_abs"].max()
+    if smax - smin == 0:
+        df_plot["spearman_abs_norm"] = 0
+    else:
+        df_plot["spearman_abs_norm"] = (df_plot["spearman_abs"] - smin) / (smax - smin)
+
+    # --- Passage en long format ---
+    df_long = df_plot.melt(
+        id_vars=["Domaine"],
+        value_vars=["slope_norm", "spearman_abs_norm"],
+        var_name="Indicateur",
+        value_name="Valeur"
+    )
+    #Renomage personnalisé des indicateurs pour la légende
+    df_long["Indicateur"] = df_long["Indicateur"].replace({
+        "slope_norm": "Progression",
+        "spearman_abs_norm": "Régularité"
+    })
+
+
+    # --- Bar chart ---
+    fig = px.bar(
+        df_long,
+        x="Valeur",
+        y="Domaine",
+        color="Indicateur",
+        barmode="group",
+        orientation="h",
+        color_discrete_map=palette
+    )
+
+    fig.update_layout(
+        template="simple_white",
+        height=500,
+        legend=dict(
+            title=None,
+            orientation="h",
+            y=-0.15,
+            x=0.5,
+            xanchor="center"
+        ),
+        xaxis=dict(title=""),
+        yaxis=dict(title="")
+    )
+
+    st.plotly_chart(fig, use_container_width=True)

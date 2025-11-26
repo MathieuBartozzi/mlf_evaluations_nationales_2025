@@ -38,26 +38,7 @@ def delta_first_last(g):
     g = g.sort_values("niveau_code")
     return np.nan if g.shape[0] < 2 else g["Valeur"].iloc[-1] - g["Valeur"].iloc[0]
 
-# =====================================================
-# Préparation données réseau
-# =====================================================
-df_reseau = df.groupby(["Matière", "Domaine", "Compétence", "Niveau"])["Valeur"].mean().reset_index()
-df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x))
 
-# =====================================================
-# Calcul évolution des compétences
-# =====================================================
-df_evol = (
-    df_reseau.groupby(["Matière", "Domaine", "Compétence"])
-    .apply(lambda g: pd.Series({
-        "slope": evolution_slope(g),
-        "spearman": evolution_spearman(g),
-        "delta": delta_first_last(g),
-        "nb_niveaux": g["niveau_code"].nunique()
-    }))
-    .reset_index()
-)
-df_evol_plot = df_evol[df_evol["nb_niveaux"] >= 2]
 
 # =====================================================
 # Interface Principale
@@ -138,7 +119,65 @@ with onglets[1]:
 # =====================================================
 # ONGLET 3 : Évolution CP → CM2
 # =====================================================
+
+
+
 with onglets[2]:
+        #=====================================================
+    # 1) PRÉPARATION DES DONNÉES
+    # =====================================================
+
+    # Valeurs moyennes par COMPÉTENCE et par NIVEAU
+    df_reseau = (
+        df.groupby(["Matière", "Domaine", "Compétence", "Niveau"])["Valeur"]
+        .mean()
+        .reset_index()
+    )
+
+    # Code niveau (CP=0 → CM2=4)
+    df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x))
+
+
+    # =====================================================
+    # 2) EVOLUTION PAR COMPÉTENCE
+    # =====================================================
+    df_evol_comp = (
+        df_reseau.groupby(["Matière", "Domaine", "Compétence"])
+        .apply(lambda g: pd.Series({
+            "slope": evolution_slope(g),
+            "spearman": evolution_spearman(g),
+            "delta": delta_first_last(g),
+            "nb_niveaux": g["niveau_code"].nunique()
+        }))
+        .reset_index()
+    )
+
+    df_evol_comp_plot = df_evol_comp[df_evol_comp["nb_niveaux"] >= 2]
+
+
+    # =====================================================
+    # 3) EVOLUTION PAR DOMAINE
+    # =====================================================
+
+    df_reseau_dom = (
+        df.groupby(["Matière", "Domaine", "Niveau"])["Valeur"]
+        .mean()
+        .reset_index()
+    )
+    df_reseau_dom["niveau_code"] = df_reseau_dom["Niveau"].apply(lambda x: ordre_niveaux.index(x))
+
+    df_evol_dom = (
+        df_reseau_dom.groupby(["Matière", "Domaine"])
+        .apply(lambda g: pd.Series({
+            "slope": evolution_slope(g),
+            "spearman": evolution_spearman(g),
+            "delta": delta_first_last(g),
+            "nb_niveaux": g["niveau_code"].nunique()
+        }))
+        .reset_index()
+    )
+
+    df_evol_dom_plot = df_evol_dom[df_evol_dom["nb_niveaux"] >= 2]
 
     st.subheader("Évolution des compétences CP → CM2")
 
@@ -147,52 +186,64 @@ with onglets[2]:
 
     with col1:
         st.markdown("""
-**Pente (slope)** : intensité de la progression
-  > La pente mesure l’ampleur du changement entre les niveaux d’une compétence.
-  > **Positive → progression**, **négative → régression**, **faible → stagnation**.
+  > La **pente** mesure l'intensité de la progression :
+  > - Positive → progression
+  > - Négative → régression
+  > - Faible → stagnation
 
-**Corrélation de Spearman** : régularité de la progression
-  > Elle indique si la montée en compétence suit un mouvement **cohérent**.
-  > **Proche de 1 → progression régulière**,
-  > **proche de 0 → évolution instable (montée / descente)**.
+  > La **corrélation de Spearman** mesure la régularité de la progression
+  > - Proche de 1 → progression régulière
+  > - Proche de 0 → évolution instable
 
     """)
     with col2:
         st.info(
             """
-            À repérer :
+            **À repérer** :
 
-            - Les compétences avec une **pente faible ou négative**
-            → priorités.
+        > **Régularité faible** -> variations fortes entre niveaux
 
-            - Les compétences ou domaines avec une **pente fortement positive** → points d’appui.
+        > **Pente positive** ->  point d’appui
 
-            - Une **corrélation de Spearman élevée** : → progression instable.
+        > **Pente faible** + **régularité faible** -> priorité
+
+        > **Pente négative** + **régularité élevée** -> alerte
+
             """,
-            icon=":material/search:"
+            icon=":material/info:"
         )
 
 
 
-    # TOP & BOTTOM 3
+
+
+    # =====================================================
+    # TOP / BOTTOM + GRAPHIQUE DOMAINES + BARRES DOMAINES
+    # =====================================================
     with st.container(border=True):
         st.subheader("Évolutions par compétences et par domaines")
-        col1, col2, col3 = st.columns(3)
-        with col1 :
-            afficher_top_bottom_evolutions(df_evol_plot)
 
+        col1, col2 = st.columns(2)
+
+        # === COMPÉTENCES ===
+        with col1:
+            afficher_top_bottom_evolutions(df_evol_comp_plot)
+
+        # === DOMAINES : BAR CHART ===
         with col2:
-            # Bar domaines
-            st.space("small")
-            afficher_bar_domaine_prog(df_evol_plot)
-        with col3:
-            st.space("small")
-            plot_regularity_vs_slope(df_evol_plot, palette)
+            afficher_bars_progression_regularity(df_evol_dom_plot, palette)
 
+
+
+
+
+    # =====================================================
+    # COURBES EN GRILLE PAR NIVEAU
+    # =====================================================
     with st.container(border=True):
         st.subheader("Évolutions par niveau")
         nb = st.pills("Sélectionner le nombre de niveaux", [2,3,4,5])
-        afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=nb, n_cols=4)
+        afficher_courbes_en_grille(df_reseau, df_evol_comp, nb_niveaux=nb, n_cols=4)
 
 # =====================================================
 # ONGLET 4 : Corrélations améliorées

@@ -6,7 +6,13 @@ from utils.auth import authenticate, logout
 st.set_page_config(
     page_title="MLF – Dashboard",
     page_icon=":material/dashboard:",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://www.extremelycoolapp.com/help',
+        'Report a bug': "https://www.extremelycoolapp.com/bug",
+        'About': "# This is a header. This is an *extremely* cool app!"
+    }
 )
 
 
