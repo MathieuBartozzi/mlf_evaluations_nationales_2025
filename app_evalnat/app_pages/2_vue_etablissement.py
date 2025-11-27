@@ -10,6 +10,7 @@ from fonctions import *
 
 
 
+
 if "rapport_open" not in st.session_state:
     st.session_state["rapport_open"] = False
 

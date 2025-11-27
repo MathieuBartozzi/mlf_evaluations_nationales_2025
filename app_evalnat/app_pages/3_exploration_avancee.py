@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from fonctions_viz import *
 
 # =====================================================
@@ -242,7 +244,7 @@ with onglets[2]:
     # =====================================================
     with st.container(border=True):
         st.subheader("Évolutions par niveau")
-        nb = st.pills("Sélectionner le nombre de niveaux", [2,3,4,5])
+        nb = st.pills("Sélectionner le nombre de niveaux", [2,3,4,5],default=2)
         afficher_courbes_en_grille(df_reseau, df_evol_comp, nb_niveaux=nb, n_cols=4)
 
 # =====================================================
