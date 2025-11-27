@@ -53,6 +53,21 @@ st.logo(logo_path, size="large")
 # --- Exécuter la page active ---
 pg.run()
 
+import ctypes
+
+try:
+    ctypes.CDLL("libcairo.so.2")
+    st.success("libcairo2 is installed")
+except:
+    st.error("libcairo2 is MISSING")
+
+try:
+    ctypes.CDLL("libpango-1.0.so.0")
+    st.success("libpango is installed")
+except:
+    st.error("libpango is MISSING")
+
+
 # --- Déconnexion ---
 if st.sidebar.button("Se déconnecter"):
     logout()

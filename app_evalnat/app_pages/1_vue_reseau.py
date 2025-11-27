@@ -8,13 +8,6 @@ from fonctions_viz import *
 from clustering import *
 
 
-
-
-st.header("Vue d’ensemble du réseau")
-import plotly
-st.write("Plotly version:", plotly.__version__)
-
-
 df = st.session_state.get('df')
 df_coordo = st.session_state.get('df_coordo')
 
