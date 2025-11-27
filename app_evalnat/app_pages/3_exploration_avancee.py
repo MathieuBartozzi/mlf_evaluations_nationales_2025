@@ -140,7 +140,7 @@ with onglets[2]:
     )
 
     # Code niveau (CP=0 → CM2=4)
-    df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x))
+    df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x), include_groups=False)
 
 
     # =====================================================
@@ -153,7 +153,7 @@ with onglets[2]:
             "spearman": evolution_spearman(g),
             "delta": delta_first_last(g),
             "nb_niveaux": g["niveau_code"].nunique()
-        }))
+        },include_groups=False))
         .reset_index()
     )
 
@@ -169,7 +169,7 @@ with onglets[2]:
         .mean()
         .reset_index()
     )
-    df_reseau_dom["niveau_code"] = df_reseau_dom["Niveau"].apply(lambda x: ordre_niveaux.index(x))
+    df_reseau_dom["niveau_code"] = df_reseau_dom["Niveau"].apply(lambda x: ordre_niveaux.index(x), include_groups=False)
 
     df_evol_dom = (
         df_reseau_dom.groupby(["Matière", "Domaine"])
@@ -178,7 +178,7 @@ with onglets[2]:
             "spearman": evolution_spearman(g),
             "delta": delta_first_last(g),
             "nb_niveaux": g["niveau_code"].nunique()
-        }))
+        },include_groups=False))
         .reset_index()
     )
 

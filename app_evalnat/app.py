@@ -1,7 +1,10 @@
 import streamlit as st
+import sys, os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# -------------------------------------------------
 from utils.loader import load_data
 from utils.auth import authenticate, logout
-import os
 
 # --- Configuration de la page ---
 st.set_page_config(
