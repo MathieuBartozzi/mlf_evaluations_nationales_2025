@@ -87,7 +87,7 @@ def heatmap_scores_par_reseau(df, ordre_niveaux):
         height=225,
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 @st.cache_data
@@ -120,7 +120,7 @@ def plot_map(df_map):
         mapbox_center={"lat": df_map["Lat"].mean(), "lon": df_map["Long"].mean()},
         margin=dict(l=40, r=20, t=10, b=40)
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def plot_line_chart(df, palette, ordre_niveaux):
@@ -162,7 +162,7 @@ def plot_line_chart(df, palette, ordre_niveaux):
         margin=dict(l=40, r=20, t=10, b=40),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def afficher_top_bottom(df):
@@ -190,10 +190,10 @@ def afficher_top_bottom(df):
     bottom3 = grouped.tail(3).sort_values(by="Valeur", ascending=True).reset_index(drop=True)
 
     st.write(f"**Top 3 {choix_label.lower()}s**")
-    st.dataframe(top3, use_container_width=True)
+    st.dataframe(top3, width='stretch')
 
     st.write(f"**Bottom 3 {choix_label.lower()}s**")
-    st.dataframe(bottom3, use_container_width=True)
+    st.dataframe(bottom3, width='stretch')
 
 
 
@@ -273,7 +273,7 @@ def graphique_moyenne_ou_ecart(df, palette):
     # Nettoyage des titres de facettes ("Critère=Réseau" → "Réseau")
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 
@@ -354,7 +354,7 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
     fig.update_traces(fill='toself')
 
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def plot_heatmap_competences(df_ecole,ordre_niveaux):
@@ -387,7 +387,7 @@ def plot_heatmap_competences(df_ecole,ordre_niveaux):
     )
 
     fig.update_layout(height=500, margin=dict(l=40, r=40, t=20, b=40),xaxis_title=None,yaxis_title=None )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 
@@ -449,7 +449,7 @@ def plot_scatter_comparatif(df, ecole_selectionnee,palette):
         showlegend=False,
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 # --------------------------------------------
 # Pie chart distribution des clusters
@@ -480,7 +480,7 @@ def plot_pie_clusters(df_feat):
             )
         )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 # --------------------------------------------
 # PCA 3D avec point de l'établissement surligné
@@ -528,7 +528,7 @@ def plot_pca_3d(df_pca, ecole_selectionnee,palette):
         center=dict(x=0, y=0, z=0)
     ))
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def get_recommandations_profil(profil):
@@ -618,9 +618,9 @@ def vue_top_bottom_matiere(df, matiere, n=5):
     bottom_n = df_mean.sort_values("Valeur", ascending=True).head(n)
 
     if choix == "+":
-        st.dataframe(top_n, use_container_width=True)
+        st.dataframe(top_n, width='stretch')
     else:
-        st.dataframe(bottom_n, use_container_width=True)
+        st.dataframe(bottom_n, width='stretch')
 
 
 def plot_distribution_competences(df, nbins=30):
@@ -659,7 +659,7 @@ def plot_distribution_competences(df, nbins=30):
         yaxis_title="Nombre de compétences",
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 
@@ -942,10 +942,10 @@ def afficher_top_bottom_evolutions(df):
     # Affichage
 
     st.write("**Top 3 progressions (compétence)**")
-    st.dataframe(top3, use_container_width=True)
+    st.dataframe(top3, width='stretch')
 
     st.write("**Bottom 3 régressions (compétence)**")
-    st.dataframe(bottom3, use_container_width=True)
+    st.dataframe(bottom3, width='stretch')
 
 
 # def afficher_bar_domaine_prog(df):
@@ -1001,7 +1001,7 @@ def afficher_top_bottom_evolutions(df):
 #     )
 #     fig.add_hline(y=0, line_color="black", line_width=1)
 
-#     st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, width='stretch')
 
 
 
@@ -1081,7 +1081,7 @@ def afficher_top_bottom_evolutions(df):
 #     )
 #     fig.update_traces(marker=dict(size=10, line=dict(width=0)))
 
-#     st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, width='stretch')
 
 
 def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
@@ -1128,7 +1128,7 @@ def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
         fig_c.update_xaxes(title="")
         # fig_c.update_xaxes(title_font=dict(size=11))
 
-        col.plotly_chart(fig_c, use_container_width=True)
+        col.plotly_chart(fig_c, width='stretch')
         index += 1
 
 
@@ -1195,7 +1195,7 @@ def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
 #         yaxis=dict(title="")
 #     )
 
-#     st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, width='stretch')
 
 def afficher_bars_progression_regularity(df, palette):
     """
@@ -1268,4 +1268,4 @@ def afficher_bars_progression_regularity(df, palette):
         yaxis=dict(title="")
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')

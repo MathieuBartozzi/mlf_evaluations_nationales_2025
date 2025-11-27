@@ -283,7 +283,7 @@ with onglets[1]:
                         file_name=f"{nom_base}.pdf",
                         mime="application/pdf",
                         type="primary",
-                        use_container_width=True,
+                        width='stretch',
                         icon=":material/download:"
                     )
 
@@ -296,6 +296,6 @@ with onglets[1]:
                         file_name=f"{nom_base}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         type="primary", # Couleur différente pour distinguer
-                        use_container_width=True,
+                        width='stretch',
                         icon=":material/download:"
                     )

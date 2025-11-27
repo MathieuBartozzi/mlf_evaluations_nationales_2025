@@ -71,7 +71,7 @@ with onglets[0]:
         # COLONNE 1 : distribution FR/MATH
         with col1:
             # fig = px.histogram(df, x="Valeur", color="Matière", barmode="overlay", nbins=30)
-            # st.plotly_chart(fig, use_container_width=True)
+            # st.plotly_chart(fig, width='stretch')
             plot_distribution_competences(df, nbins=10)
 
         # COLONNE 2 : distribution par matière sélectionnée
@@ -105,10 +105,10 @@ with onglets[1]:
 
         col1, col2=st.columns(2)
         with col1:
-            st.plotly_chart(plot_swarm_competences(df, palette, seuil_std=seuil_std), use_container_width=True)
+            st.plotly_chart(plot_swarm_competences(df, palette, seuil_std=seuil_std), width='stretch')
 
         with col2:
-            st.plotly_chart(plot_scatter_dispersion(df, palette, seuil_std=seuil_std), use_container_width=True)
+            st.plotly_chart(plot_scatter_dispersion(df, palette, seuil_std=seuil_std), width='stretch')
 
 
         df_fr, df_math = list_competences_discriminantes(df, seuil_std=seuil_std)
@@ -116,10 +116,10 @@ with onglets[1]:
         col1, col2 = st.columns(2)
 
         with col1:
-            st.dataframe(df_fr, use_container_width=True)
+            st.dataframe(df_fr, width='stretch')
 
         with col2:
-            st.dataframe(df_math, use_container_width=True)
+            st.dataframe(df_math, width='stretch')
 
 # =====================================================
 # ONGLET 3 : Évolution CP → CM2
