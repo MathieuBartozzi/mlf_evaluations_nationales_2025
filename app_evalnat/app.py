@@ -8,11 +8,6 @@ st.set_page_config(
     page_icon=":material/dashboard:",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://www.extremelycoolapp.com/help',
-        'Report a bug': "https://www.extremelycoolapp.com/bug",
-        'About': "# This is a header. This is an *extremely* cool app!"
-    }
 )
 
 
@@ -42,6 +37,9 @@ pages = [
 ]
 
 pg = st.navigation(pages, position="top")
+
+st.logo("logo_mlfmonde.png", size="large" )
+
 
 # --- Exécuter la page active ---
 pg.run()

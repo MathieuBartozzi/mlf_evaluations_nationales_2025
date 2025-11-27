@@ -1,0 +1,14 @@
+libpango-1.0-0
+libpangocairo-1.0-0
+libpangoft2-1.0-0
+libharfbuzz0b
+libharfbuzz-subset0
+libgdk-pixbuf2.0-0
+libcairo2
+libffi-dev
+libxml2
+libjpeg62-turbo
+libpng16-16
+libfreetype6
+fontconfig
+fonts-liberation
