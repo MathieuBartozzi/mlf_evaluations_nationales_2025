@@ -12,3 +12,7 @@ libpng16-16
 libfreetype6
 fontconfig
 fonts-liberation
+fonts-dejavu-core
+fonts-dejavu-extra
+libnss3
+libasound2
