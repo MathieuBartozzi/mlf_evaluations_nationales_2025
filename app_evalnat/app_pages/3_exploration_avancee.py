@@ -153,7 +153,7 @@ with onglets[2]:
             "spearman": evolution_spearman(g),
             "delta": delta_first_last(g),
             "nb_niveaux": g["niveau_code"].nunique()
-        },include_groups=False))
+        }),include_groups=False)
         .reset_index()
     )
 
@@ -178,7 +178,7 @@ with onglets[2]:
             "spearman": evolution_spearman(g),
             "delta": delta_first_last(g),
             "nb_niveaux": g["niveau_code"].nunique()
-        },include_groups=False))
+        }),include_groups=False)
         .reset_index()
     )
 
