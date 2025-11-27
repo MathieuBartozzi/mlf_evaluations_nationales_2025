@@ -140,7 +140,7 @@ with onglets[2]:
     )
 
     # Code niveau (CP=0 → CM2=4)
-    df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x), include_groups=False)
+    df_reseau["niveau_code"] = df_reseau["Niveau"].apply(lambda x: ordre_niveaux.index(x))
 
 
     # =====================================================
@@ -169,7 +169,7 @@ with onglets[2]:
         .mean()
         .reset_index()
     )
-    df_reseau_dom["niveau_code"] = df_reseau_dom["Niveau"].apply(lambda x: ordre_niveaux.index(x), include_groups=False)
+    df_reseau_dom["niveau_code"] = df_reseau_dom["Niveau"].apply(lambda x: ordre_niveaux.index(x))
 
     df_evol_dom = (
         df_reseau_dom.groupby(["Matière", "Domaine"])
