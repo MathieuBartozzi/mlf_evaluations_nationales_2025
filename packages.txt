@@ -1,0 +1,14 @@
+pango-1.0-0
+libpango-1.0-0
+libpangoft2-1.0-0
+libpangocairo-1.0-0
+libgdk-pixbuf-2.0-0
+libffi-dev
+shared-mime-info
+libcairo2
+libxml2
+libjpeg62-turbo
+libpng16-16
+libfreetype6
+fontconfig
+fonts-liberation
