@@ -8,6 +8,20 @@ from fonctions_viz import *
 from clustering import *
 
 
+import ctypes
+
+try:
+    ctypes.CDLL("libcairo.so.2")
+    st.success("libcairo2 is installed")
+except:
+    st.error("libcairo2 is MISSING")
+
+try:
+    ctypes.CDLL("libpango-1.0.so.0")
+    st.success("libpango is installed")
+except:
+    st.error("libpango is MISSING")
+    
 df = st.session_state.get('df')
 df_coordo = st.session_state.get('df_coordo')
 
