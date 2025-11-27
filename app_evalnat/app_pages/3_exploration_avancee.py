@@ -3,7 +3,10 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from fonctions_viz import *
 
 # =====================================================

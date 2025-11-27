@@ -2,7 +2,9 @@ import streamlit as st
 import sys, os
 
 # === Import des configs et fonctions utilitaires ===
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from config import *
 from fonctions_viz import *
 from clustering import *
