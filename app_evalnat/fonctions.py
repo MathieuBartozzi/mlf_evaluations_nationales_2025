@@ -288,7 +288,7 @@ def convert_to_pdf_data(md_text, ecole_nom):
         {html_content}
         <br><br><hr style="border: 0; border-top: 1px solid #eee;">
         <p style="font-size: 9pt; color: #888; text-align: center; font-style: italic;">
-            Document généré automatiquement par le Dashboard MLF.
+            Document généré automatiquement par une IA.
         </p>
     </body>
     </html>

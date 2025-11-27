@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.loader import load_data
 from utils.auth import authenticate, logout
+import os
 
 # --- Configuration de la page ---
 st.set_page_config(
@@ -12,13 +13,22 @@ st.set_page_config(
 
 
 
+# --- Correction du logo ---
+# On calcule le chemin absolu basé sur l'emplacement de app.py
+current_dir = os.path.dirname(os.path.abspath(__file__))
+logo_path = os.path.join(current_dir, "logo_mlfmonde.png")
+
+#On vérifie que le fichier existe (optionnel, pour le debug)
+if not os.path.exists(logo_path):
+    st.error(f"Image introuvable : {logo_path}")
+
 
 # --- Authentification utilisateur ---
-# user = authenticate()
+user = authenticate()
 
-# if st.session_state.get("show_welcome", False):
-#     st.success(f"Bienvenue, {user} ! 🎉")
-#     st.session_state["show_welcome"] = False
+if st.session_state.get("show_welcome", False):
+    st.success(f"Bienvenue, {user} ! 🎉")
+    st.session_state["show_welcome"] = False
 
 # --- Chargement des données ---
 with st.spinner("Chargement des données…"):
@@ -38,8 +48,7 @@ pages = [
 
 pg = st.navigation(pages, position="top")
 
-st.logo("logo_mlfmonde.png", size="large" )
-
+st.logo(logo_path, size="large")
 
 # --- Exécuter la page active ---
 pg.run()
