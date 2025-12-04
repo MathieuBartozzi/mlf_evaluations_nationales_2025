@@ -15,22 +15,17 @@ import plotly.io as pio
 from fpdf import FPDF
 from fonctions_viz import *
 
-import imgkit
-import tempfile
+import matplotlib.pyplot as plt
 
-def fig_to_png(fig):
-    # Export de la figure Plotly en HTML (sans Kaleido)
-    html_str = pio.to_html(fig, full_html=False)
-
-    # Sauvegarde HTML temporaire
-    with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as f_html:
-        f_html.write(html_str.encode("utf-8"))
-        html_path = f_html.name
-
-    # Conversion HTML → PNG via wkhtmltoimage (indépendant de Chrome)
-    png_bytes = imgkit.from_file(html_path, False)  # False = retourne bytes
-
-    return png_bytes
+def fig_to_png(fig, scale=3):
+    # Convert Plotly figure to static image via Matplotlib (no Chrome needed)
+    img_bytes = pio.to_image(
+        fig,
+        format="png",
+        scale=scale,
+        engine="matplotlib"  # Force renderer that does NOT require Chrome
+    )
+    return img_bytes
 
 # ---------------------------------------------------------
 #   FONCTION  : Générer un rapport d'analyse pour un établissement
