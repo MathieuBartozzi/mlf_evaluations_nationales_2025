@@ -3,18 +3,20 @@ import streamlit as st
 from openai import OpenAI
 import markdown
 import io
-from weasyprint import HTML, CSS
+from weasyprint import HTML
 import os
 import base64
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
 import re
+from io import BytesIO
+import plotly.io as pio
+from fpdf import FPDF
+from fonctions_viz import *
 
 # ---------------------------------------------------------
-#   FONCTION  : Générer un rapport d’analyse pour un établissement
+#   FONCTION  : Générer un rapport d'analyse pour un établissement
 # ---------------------------------------------------------
 def generer_rapport_etablissement(df, selected_etablissement, contexte_local=None, pdf_text=None):
     """
@@ -46,7 +48,7 @@ def generer_rapport_etablissement(df, selected_etablissement, contexte_local=Non
 
             for _, row in sous_df_dom.iterrows():
                 resultats_str += (
-                    f"- **{row['Niveau']} – {row['Compétence']}** : "
+                    f"- **{row['Niveau']} - {row['Compétence']}** : "
                     f"{row['Valeur']:.1f}%\n"
                 )
 
@@ -60,7 +62,7 @@ def generer_rapport_etablissement(df, selected_etablissement, contexte_local=Non
     prompt = f"""
 
     Tu es un expert en éducation et en analyse de données scolaires.
-    Ton rôle : aider un chef d’établissement à piloter la pédagogie via une analyse de données factuelle et bienveillante.
+    Ton rôle : aider un chef d'établissement à piloter la pédagogie via une analyse de données factuelle et bienveillante.
 
     TON OBJECTIF DE FORME (TRES IMPORTANT POUR L'EXPORT PDF) :
     1. Utilise strictement la syntaxe Markdown.
@@ -85,7 +87,7 @@ def generer_rapport_etablissement(df, selected_etablissement, contexte_local=Non
     # {titre_rapport}
 
     ### **Contexte**
-    L’établissement **{selected_etablissement}**, situé à **{ville}, {pays}**, a récemment obtenu des résultats aux évaluations nationales pour les niveaux suivants : **{niveaux}**.
+    L'établissement **{selected_etablissement}**, situé à **{ville}, {pays}**, a récemment obtenu des résultats aux évaluations nationales pour les niveaux suivants : **{niveaux}**.
 
     **Scores moyens par niveau et par compétence :**
     {resultats_str}
@@ -101,7 +103,7 @@ def generer_rapport_etablissement(df, selected_etablissement, contexte_local=Non
 
 
 
-    # 🧱 STRUCTURE D’ANALYSE DEMANDÉE
+    # 🧱 STRUCTURE D'ANALYSE DEMANDÉE
     prompt += """
 ---
 
@@ -121,7 +123,7 @@ Rédige le rapport en suivant strictement ce plan :
 - Fais le lien entre les compétences (ex: le vocabulaire impacte-t-il la résolution de problèmes ?).
 - Signale les compétences transversales qui pourraient jouer un rôle.
 
-### 3. Pistes d’amélioration
+### 3. Pistes d'amélioration
 - Propose des stratégies concrètes (rituels, différenciation, co-intervention...).
 - Suggère des dispositifs spécifiques (APC, stages...).
 
@@ -153,7 +155,7 @@ Rédige le rapport en suivant strictement ce plan :
 
 # Fonction pour extraire un texte limité à 3 pages
 def extract_text_from_pdf(pdf_file, max_pages=3):
-    """Extrait le texte des X premières pages d’un PDF, avec une limite sur le nombre de mots."""
+    """Extrait le texte des X premières pages d'un PDF, avec une limite sur le nombre de mots."""
     text = ""
     with fitz.open(stream=pdf_file.read(), filetype="pdf") as doc:
         for i, page in enumerate(doc):
@@ -407,3 +409,207 @@ def _add_rich_text(paragraph, text):
         else:
             # Texte normal
             paragraph.add_run(part)
+
+
+
+def generate_pdf(df_ecole, df_global, df_feat, df_pca,
+                 ecole_selectionnee, ordre_niveaux, palette):
+    """
+    Génère un PDF complet et mis en forme, reproduisant la page Streamlit :
+    - Carte d'identité
+    - Métriques
+    - Radar
+    - Scatter
+    - Heatmaps FR & MATH
+    - Courbe progression
+    - Profilage (PCA + clusters)
+    - Recommandations
+    """
+
+    pdf = FPDF(format="A4")
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # --------------------------------------------------
+    # 0. Pré-calculs
+    # --------------------------------------------------
+    info_ecole = df_ecole[["Réseau", "Statut", "Homologué"]].drop_duplicates().iloc[0]
+
+    moy_gen,  delta_gen  = get_moyenne_et_delta(df_global, df_ecole)
+    moy_fr,   delta_fr   = get_moyenne_et_delta(df_global, df_ecole, "Français")
+    moy_math, delta_math = get_moyenne_et_delta(df_global, df_ecole, "Mathématiques")
+
+    cluster_id = int(df_feat.loc[ecole_selectionnee, "cluster"])
+    profil = cluster_id + 1
+
+    pc1 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC1"].values[0]
+    pc2 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC2"].values[0]
+    pc3 = df_pca.loc[df_pca["Nom_ecole"] == ecole_selectionnee, "PC3"].values[0]
+
+    recommandations = get_recommandations_profil(profil)
+
+    # --------------------------------------------------
+    # PAGE 1 : TITRE + CARTE IDENTITÉ + MÉTRIQUES + RADAR + SCATTER
+    # --------------------------------------------------
+    pdf.add_page()
+
+    # Titre
+    pdf.set_font("Arial", "B", 18)
+    pdf.cell(0, 10, f"Rapport - {ecole_selectionnee}", ln=True)
+
+    # Sous-titre
+    pdf.set_font("Arial", "", 12)
+    pdf.multi_cell(
+        0, 7,
+        "Synthèse visuelle des performances et du profil global de l'établissement "
+        "au regard des évaluations nationales."
+    )
+    pdf.ln(4)
+
+    # Carte d'identité
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 8, "Carte d'identité de l'établissement", ln=True)
+
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(
+        0, 6,
+        f"- Réseau : {info_ecole['Réseau']}\n"
+        f"- Statut : {info_ecole['Statut']}\n"
+        f"- Homologué : {info_ecole['Homologué']}"
+    )
+    pdf.ln(4)
+
+    # Métriques
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 8, "Résultats globaux", ln=True)
+
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(
+        0, 6,
+        f"- Moyenne générale : {moy_gen:.1f} %  (écart réseau : {delta_gen:+.1f} pts)\n"
+        f"- Français : {moy_fr:.1f} %  (écart réseau : {delta_fr:+1.1f} pts)\n"
+        f"- Mathématiques : {moy_math:.1f} %  (écart réseau : {delta_math:+1.1f} pts)"
+    )
+    pdf.ln(6)
+
+    # ---------------------------- Radar ----------------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Positionnement par domaine", ln=True)
+
+    fig_radar = plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette, return_fig=True)
+    img_radar = pio.to_image(fig_radar, format="png", scale=3)
+    pdf.image(BytesIO(img_radar), w=170)
+    pdf.ln(4)
+
+    # -------------------------- Scatter ----------------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Comparaison établissement / réseau", ln=True)
+
+    fig_scatter = plot_scatter_comparatif(df_global, ecole_selectionnee, palette, return_fig=True)
+    img_scatter = pio.to_image(fig_scatter, format="png", scale=3)
+    pdf.image(BytesIO(img_scatter), w=170)
+
+    # --------------------------------------------------
+    # PAGE 2 : HEATMAP FR + MATH + COURBE PROGRESSION
+    # --------------------------------------------------
+    pdf.add_page()
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Progression des apprentissages de CP à CM2", ln=True)
+
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(
+        0, 6,
+        "Les graphiques suivants présentent la progression des compétences et "
+        "la régularité des apprentissages dans le temps."
+    )
+    pdf.ln(4)
+
+    # ---------------------- Heatmap Français ----------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Heatmap des compétences - Français", ln=True)
+
+    fig_h_fr = plot_heatmap_competences(df_ecole, "Français", ordre_niveaux, return_fig=True)
+    img_h_fr = pio.to_image(fig_h_fr, format="png", scale=3)
+    pdf.image(BytesIO(img_h_fr), w=170)
+    pdf.ln(4)
+
+    # ---------------------- Heatmap Mathématiques ----------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Heatmap des compétences - Mathématiques", ln=True)
+
+    fig_h_math = plot_heatmap_competences(df_ecole, "Mathématiques", ordre_niveaux, return_fig=True)
+    img_h_math = pio.to_image(fig_h_math, format="png", scale=3)
+    pdf.image(BytesIO(img_h_math), w=170)
+    pdf.ln(4)
+
+    # ---------------------- Courbe progression ----------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Courbe des moyennes par niveau", ln=True)
+
+    fig_line = plot_line_chart(df_ecole, palette, ordre_niveaux, return_fig=True)
+    img_line = pio.to_image(fig_line, format="png", scale=3)
+    pdf.image(BytesIO(img_line), w=170)
+
+    # --------------------------------------------------
+    # PAGE 3 : PROFILAGE + PCA + CLUSTERS + AXES + RECO
+    # --------------------------------------------------
+    pdf.add_page()
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "Profil de l'établissement", ln=True)
+    pdf.ln(3)
+
+    # Profil
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(
+        0, 6,
+        f"L'établissement appartient au **Profil {profil}** dans la classification "
+        f"issue de l'analyse en composantes principales."
+    )
+    pdf.ln(4)
+
+    # ---------------------- Camembert clusters ----------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Répartition des profils dans le réseau", ln=True)
+
+    fig_pie = plot_pie_clusters(df_feat, return_fig=True)
+    img_pie = pio.to_image(fig_pie, format="png", scale=3)
+    pdf.image(BytesIO(img_pie), w=120)
+    pdf.ln(4)
+
+    # ---------------------- PCA 3D ----------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Position de l'établissement dans l'espace des profils (PCA)", ln=True)
+
+    fig_pca = plot_pca_3d(df_pca, ecole_selectionnee, palette, return_fig=True)
+    img_pca = pio.to_image(fig_pca, format="png", scale=3)
+    pdf.image(BytesIO(img_pca), w=170)
+    pdf.ln(4)
+
+    # ---------------------- Axes PCA ----------------------
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 7, "Interprétation des axes", ln=True)
+
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(
+        0, 6,
+        f"Axe 1 - Fondamentaux : {pc1:.2f}\n"
+        f"Axe 2 - Automatisation : {pc2:.2f}\n"
+        f"Axe 3 - Complexité : {pc3:.2f}\n\n"
+        "Les valeurs positives indiquent un positionnement supérieur à la moyenne du réseau, "
+        "les valeurs négatives suggèrent un besoin de renforcement."
+    )
+
+    # ---------------------- Recommandations ----------------------
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, f"Recommandations pédagogiques - Profil {profil}", ln=True)
+
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(0, 6, recommandations)
+
+    # --------------------------------------------------
+    # EXPORT
+    # --------------------------------------------------
+    pdf_bytes = bytes(pdf.output(dest="S"))
+    return pdf_bytes

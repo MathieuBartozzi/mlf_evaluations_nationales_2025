@@ -79,21 +79,21 @@ with st.container(border=True):
     with col1 :
         st.markdown(
         f"""
-        Le clustering regroupe les établissements en fonction de leurs dynamiques pédagogiques observées sur l’ensemble des compétences du **CP au CM2**. **Quatre profils** émergent de l'analyse :
+        Le clustering regroupe les établissements en fonction de leurs dynamiques pédagogiques observées sur l'ensemble des compétences du **CP au CM2**. **Quatre profils** émergent de l'analyse :
 
         | Profil | Description synthétique |
         |--------|--------------------------|
         | {square(palette["profil_0"])} **1**| Bonnes performances en compréhension et en compréhension syntaxique et textuelle, mais une automatisation encore insuffisante (calcul, techniques opératoires). |
-        | {square(palette["profil_1"])} **2** | Performances hétérogènes, avec une progression CP–CM2 peu régulière, suggérant une cohérence d’ensemble à renforcer. |
+        | {square(palette["profil_1"])} **2** | Performances hétérogènes, avec une progression CP-CM2 peu régulière, suggérant une cohérence d'ensemble à renforcer. |
         | {square(palette["profil_2"])} **3** | Résultats globalement équilibrés entre compréhension, automatisation et résolution complexe, avec des fragilités limitées et ciblables. |
         | {square(palette["profil_3"])} **4** | Forts en procédures et raisonnement mathématique, mais des fragilités en compréhension, raisonnement et transfert dans des tâches complexes. |
 
 
-        L’analyse repose sur trois axes structurants en lien avec les compétences évaluées :
+        L'analyse repose sur trois axes structurants en lien avec les compétences évaluées :
 
-        - **Axe 1 – Fondamentaux sémantiques** : compréhension orale/écrite, vocabulaire, raisonnement
-        - **Axe 2 – Automatisation mathématique** : calcul mental, techniques opératoires
-        - **Axe 3 – Complexité cognitive** : tâches intégratives, problèmes multi-étapes
+        - **Axe 1 - Fondamentaux sémantiques** : compréhension orale/écrite, vocabulaire, raisonnement
+        - **Axe 2 - Automatisation mathématique** : calcul mental, techniques opératoires
+        - **Axe 3 - Complexité cognitive** : tâches intégratives, problèmes multi-étapes
         """
         ,unsafe_allow_html=True)
 

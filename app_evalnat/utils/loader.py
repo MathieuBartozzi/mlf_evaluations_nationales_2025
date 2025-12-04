@@ -16,7 +16,7 @@ def load_data(file_key: str):
             if col.lower() in ["lat","long"]:
                 df[col] = (
                     df[col]
-                    .astype(str)              # s’assure qu’on manipule du texte
+                    .astype(str)              # s'assure qu'on manipule du texte
                     .str.replace(",", ".", regex=False)  # convertit les virgules en points
                     .astype(float)            # conversion en float
                 )

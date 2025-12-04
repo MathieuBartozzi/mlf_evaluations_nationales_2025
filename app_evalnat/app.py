@@ -8,7 +8,7 @@ from utils.auth import authenticate, logout
 
 # --- Configuration de la page ---
 st.set_page_config(
-    page_title="MLF – Dashboard",
+    page_title="MLF - Dashboard",
     page_icon=":material/dashboard:",
     layout="wide",
     initial_sidebar_state="expanded",

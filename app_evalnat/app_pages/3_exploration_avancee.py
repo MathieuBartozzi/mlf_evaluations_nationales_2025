@@ -16,7 +16,7 @@ df = st.session_state.get("df")
 df_coordo = st.session_state.get("df_coordo")
 
 if df is None or df.empty:
-    st.warning("Aucune donnée disponible. Ouvrez d’abord la page Home.")
+    st.warning("Aucune donnée disponible. Ouvrez d'abord la page Home.")
     st.stop()
 
 df["Valeur"] = df["Valeur"] * 100
@@ -72,7 +72,7 @@ with onglets[0]:
         with col1:
             # fig = px.histogram(df, x="Valeur", color="Matière", barmode="overlay", nbins=30)
             # st.plotly_chart(fig, width='stretch')
-            plot_distribution_competences(df, nbins=10)
+            plot_distribution_competences(df, palette, nbins=10)
 
         # COLONNE 2 : distribution par matière sélectionnée
         with col2:
@@ -90,7 +90,7 @@ with onglets[1]:
         st.subheader("Compétences discriminantes ")
 
         st.markdown("""
-                    > Une compétence est dite « discriminante » lorsqu’elle permet de distinguer clairement les établissements : les écarts de performance y sont importants. Ici, la discrimination est estimée via la dispersion des scores (écart-type). Plus l’écart-type est élevé, plus la compétence différencie les établissements : en dessous de 8 la dispersion est faible, entre 8 et 12 elle devient notable, au-delà de 12 la compétence est fortement discriminante.
+                    > Une compétence est dite « discriminante » lorsqu'elle permet de distinguer clairement les établissements : les écarts de performance y sont importants. Ici, la discrimination est estimée via la dispersion des scores (écart-type). Plus l'écart-type est élevé, plus la compétence différencie les établissements : en dessous de 8 la dispersion est faible, entre 8 et 12 elle devient notable, au-delà de 12 la compétence est fortement discriminante.
                     """)
         # --- SLIDER en haut ---
         col_slider_left, col_slider_empty = st.columns([1, 3])
@@ -105,10 +105,13 @@ with onglets[1]:
 
         col1, col2=st.columns(2)
         with col1:
-            st.plotly_chart(plot_swarm_competences(df, palette, seuil_std=seuil_std), width='stretch')
+            # st.plotly_chart(plot_swarm_competences(df, palette, seuil_std=seuil_std), width='stretch')
+            plot_swarm_competences(df, palette, seuil_std=seuil_std)
+
 
         with col2:
-            st.plotly_chart(plot_scatter_dispersion(df, palette, seuil_std=seuil_std), width='stretch')
+            # st.plotly_chart(plot_scatter_dispersion(df, palette, seuil_std=seuil_std), width='stretch')
+            plot_scatter_dispersion(df, palette, seuil_std=seuil_std)
 
 
         df_fr, df_math = list_competences_discriminantes(df, seuil_std=seuil_std)
@@ -208,7 +211,7 @@ with onglets[2]:
 
         > **Régularité faible** -> variations fortes entre niveaux
 
-        > **Pente positive** ->  point d’appui
+        > **Pente positive** ->  point d'appui
 
         > **Pente faible** + **régularité faible** -> priorité
 
@@ -255,18 +258,18 @@ with onglets[2]:
 # =====================================================
 with onglets[3]:
     st.markdown("""
-### Grille de lecture – Exploration avancée des compétences
+### Grille de lecture - Exploration avancée des compétences
 
-Cette page permet d’examiner les compétences en profondeur, non pas à l’échelle d’un établissement, mais à l’échelle des **dynamiques pédagogiques du réseau**. Les trois vues complémentaires aident à comprendre la structure globale des apprentissages du CP au CM2.
+Cette page permet d'examiner les compétences en profondeur, non pas à l'échelle d'un établissement, mais à l'échelle des **dynamiques pédagogiques du réseau**. Les trois vues complémentaires aident à comprendre la structure globale des apprentissages du CP au CM2.
 
 ---
 
 ### 1. Statistiques globales des compétences
 
 - Les histogrammes indiquent la **répartition des niveaux de maîtrise** :
-  - forte concentration entre 70–80 % → compétences globalement stabilisées dans le réseau ;
+  - forte concentration entre 70-80 % → compétences globalement stabilisées dans le réseau ;
   - présence de nombreuses compétences < 65 % → fragilités structurelles partagées.
-- Les listes “+ maîtrisées / – maîtrisées” révèlent :
+- Les listes “+ maîtrisées / - maîtrisées” révèlent :
   - les compétences **généralement robustes** dans le Mlfmonde ;
   - les compétences **traditionnellement exigeantes** (ex. étude de la langue, automatisation mathématique), pour lesquelles un écart local est souvent normal.
 - Cette vue aide à **contextualiser les difficultés locales** dans une réalité réseau plus large.
@@ -276,22 +279,22 @@ Cette page permet d’examiner les compétences en profondeur, non pas à l’é
 ### 2. Compétences discriminantes
 
 - Une compétence est “discriminante” si les écarts entre établissements y sont **très importants**.
-- Le niveau de dispersion (écart-type) est l’indicateur clé :
+- Le niveau de dispersion (écart-type) est l'indicateur clé :
   - dispersion < 8 → homogénéité réseau ;
-  - dispersione entre 8–12 → variations significatives ;
+  - dispersione entre 8-12 → variations significatives ;
   - dispersion > 12 → compétence fortement différenciante.
 - Les points en zone rouge signalent des compétences :
   - souvent **trop complexes** ou instables au niveau réseau,
   - fortement dépendantes des pratiques pédagogiques.
 - Cette vue permet de :
   - repérer les compétences où un **accompagnement réseau** serait le plus pertinent,
-  - relativiser les écarts d’un établissement lorsque la compétence est **globalement très dispersive**.
+  - relativiser les écarts d'un établissement lorsque la compétence est **globalement très dispersive**.
 
 ---
 
 ### 3. Progression CP → CM2
 
-- La **pente (slope)** indique l’évolution de la compétence :
+- La **pente (slope)** indique l'évolution de la compétence :
   - positive → progression attendue ;
   - négative → régression à surveiller ;
   - faible → stagnation.
@@ -307,13 +310,13 @@ Cette page permet d’examiner les compétences en profondeur, non pas à l’é
 
 ### 4. Conclusion
 
-Cette page donne une vue fine et transversale des compétences à l’échelle du réseau.
+Cette page donne une vue fine et transversale des compétences à l'échelle du réseau.
 Elle permet de repérer :
 - les compétences structurellement fortes ou fragiles,
-- celles qui génèrent le plus d’écarts entre établissements,
+- celles qui génèrent le plus d'écarts entre établissements,
 - celles où la progression CP→CM2 est la plus cohérente ou la plus instable.
 
-Elle constitue un appui pour **orienter les priorités d’analyse**, les actions de formation et les accompagnements pédagogiques ciblés.
+Elle constitue un appui pour **orienter les priorités d'analyse**, les actions de formation et les accompagnements pédagogiques ciblés.
 
 
 

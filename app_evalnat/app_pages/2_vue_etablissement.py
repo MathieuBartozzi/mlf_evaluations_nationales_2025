@@ -1,6 +1,7 @@
 import streamlit as st
 import sys, os
 
+
 # === Import des configs et fonctions utilitaires ===
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -12,21 +13,17 @@ from fonctions import *
 
 
 
-
-if "rapport_open" not in st.session_state:
-    st.session_state["rapport_open"] = False
-
 # ===================================================
 # PAGE : Vue par établissement
 # ===================================================
-st.header("Profil d’un établissement")
+st.header("Profil d'un établissement")
 
 # Récupération des données en session
 df = st.session_state.get("df")
 df_coordo = st.session_state.get("df_coordo")
 
 if df is None or df.empty:
-    st.warning("Aucune donnée disponible. Ouvrez d’abord la page Home.")
+    st.warning("Aucune donnée disponible. Ouvrez d'abord la page Home.")
     st.stop()
 
 df["Valeur"] = df["Valeur"] * 100
@@ -37,7 +34,7 @@ df_feat, df_pca, pca, scaler, kmeans = calculer_clustering(df_feat)
 
 
 # ---------------------------------------------------
-# 1️⃣ Sélecteur d’établissement
+# 1️⃣ Sélecteur d'établissement
 # ---------------------------------------------------
 ecoles = sorted([str(e) for e in df["Nom_ecole"].dropna().unique()])
 
@@ -53,30 +50,8 @@ onglets = st.tabs([
 ])
 
 with onglets[0]:
-# with col2 :
-#     st.space("small")
-#     with st.popover("**Grille de lecture des indicateurs**") :
-#         st.markdown("""
-# - Les résultats reflètent **des tendances collectives**, pas des performances individuelles.
-# - Les moyennes (générale, français, maths) situent l’établissement **par rapport au réseau**, mais ne décrivent pas l’hétérogénéité des classes.
-# - Le graphique radar met en évidence :
-#   - les **domaines d’appui** (au-dessus du réseau),
-#   - les **domaines à renforcer** (en dessous du réseau),
-#   - en tenant compte du fait que certains écarts sont **structurels** dans tout le Réseau mlfmonde.
-# - La progression **CP→CM2** indique le niveau de cohérence verticale :
-#   - évolution régulière → continuité pédagogique stabilisée,
-#   - évolution en dents de scie → variations de cohortes, de pratiques ou d’organisation.
-# - Le **profil PCA** (fondamentaux, automatisation, complexité) ne classe pas l’établissement :
-#   - il aide à **cibler 2–3 leviers prioritaires** pour le pilotage pédagogique.
-# """)
-
-
-
-
-
-
     # ---------------------------------------------------
-    # 2️⃣ Carte d’identité de l’établissement
+    # 2️⃣ Carte d'identité de l'établissement
     # ---------------------------------------------------
 
     # # Récupération des infos administratives
@@ -128,7 +103,13 @@ with onglets[0]:
         st.subheader("Progression des apprentissages de CP à CM2")
         col1, col2 =st.columns([2,1])
         with col1 :
-            plot_heatmap_competences(df_ecole,ordre_niveaux)
+            matiere = st.radio(
+            "Choisissez la matière :",
+            ("Français", "Mathématiques"),
+            horizontal=True,
+            key="plot_heatmap_competences")
+
+            plot_heatmap_competences(df_ecole,matiere, ordre_niveaux)
         with col2:
             plot_line_chart(df_ecole, palette, ordre_niveaux)
 
@@ -156,11 +137,11 @@ with onglets[0]:
 
             # Affichage des axes
             a1, a2, a3 = st.columns(3)
-            a1.metric("Axe 1 – Fondamentaux", f"{pc1:.2f}")
-            a2.metric("Axe 2 – Automatisation", f"{pc2:.2f}")
-            a3.metric("Axe 3 – Complexité", f"{pc3:.2f}")
+            a1.metric("Axe 1 - Fondamentaux", f"{pc1:.2f}")
+            a2.metric("Axe 2 - Automatisation", f"{pc2:.2f}")
+            a3.metric("Axe 3 - Complexité", f"{pc3:.2f}")
 
-            st.caption("Les axes PCA sont centrés sur le réseau : **0 = moyenne**, valeurs positives = **au-dessus**, valeurs négatives = **en-dessous**. Plus l’écart à 0 est fort, plus la position est marquée.")
+            st.caption("Les axes PCA sont centrés sur le réseau : **0 = moyenne**, valeurs positives = **au-dessus**, valeurs négatives = **en-dessous**. Plus l'écart à 0 est fort, plus la position est marquée.")
 
             # Recommandations en fonction du profil
             st.markdown(get_recommandations_profil(profil))
@@ -171,13 +152,54 @@ with onglets[0]:
         with col_droite:
             plot_pca_3d(df_pca, ecole_selectionnee, palette)
 
+
+    # --------------------------------------
+    # 🚀 EXPORT PDF (GENERATION + TELECHARGEMENT)
+    # --------------------------------------
+
+    # 1️⃣ Bouton pour générer le PDF (affiché si PDF pas encore prêt)
+    if not st.session_state.get("pdf_ready", False):
+
+        if st.button("Convertir la page en PDF", type="secondary", icon=":material/settings:"):
+            with st.spinner("🚧 Création du PDF en cours..."):
+                pdf_bytes = generate_pdf(
+                    df_ecole,
+                    df,
+                    df_feat,
+                    df_pca,
+                    ecole_selectionnee,
+                    ordre_niveaux,
+                    palette,
+                )
+
+            # stockage du PDF en session
+            st.session_state["pdf_bytes"] = pdf_bytes
+            st.session_state["pdf_ready"] = True
+
+            # rafraîchir l'UI pour afficher le download button
+            st.rerun()
+
+    # 2️⃣ Si PDF prêt → afficher un **unique bouton de téléchargement**
+    else:
+        st.success("Le PDF est prêt ✅")
+
+        st.download_button(
+            label="Télécharger le PDF",
+            data=st.session_state["pdf_bytes"],
+            file_name=f"rapport_{ecole_selectionnee}.pdf",
+            mime="application/pdf",
+            type="primary",
+            icon=":material/download:"
+        )
+
+
 with onglets[1]:
 # st.divider()
 
     # st.markdown("#### 📄 Génération de rapport d'analyse")
     st.markdown("""
     Une IA peut générer automatiquement un rapport détaillé sur les résultats de votre établissement aux évaluations nationales.
-    Vous y trouverez les tendances marquantes, les points forts et les pistes d’amélioration, tout en suggérant des actions de formation pour les enseignants.
+    Vous y trouverez les tendances marquantes, les points forts et les pistes d'amélioration, tout en suggérant des actions de formation pour les enseignants.
     """)
 
     # --- Gestion du changement d'établissement ---
@@ -205,7 +227,7 @@ with onglets[1]:
                 "Vous pouvez ajouter des informations spécifiques sur l'établissement :",
                 placeholder="Exemples :\n"
                             "- Nos élèves sont majoritairement bilingues...\n"
-                            "- Notre équipe enseignante est majoritairement composée d’enseignants en contrat local...",
+                            "- Notre équipe enseignante est majoritairement composée d'enseignants en contrat local...",
                 height=200
             )
 
@@ -226,7 +248,7 @@ with onglets[1]:
     # ---------------------------------------------------
     # ACTION : GÉNÉRATION DU RAPPORT
     # ---------------------------------------------------
-    if st.button("⚙️ Générer le rapport", type='primary'):
+    if st.button("Générer le rapport", type='primary', icon=":material/wand_stars:"):
         with st.spinner("🚧 Votre rapport est en cours de création. Merci de patienter un instant ⏳..."):
             # On refiltre pour être sûr d'avoir les bonnes données
             df_ecole = df[df["Nom_ecole"] == ecole_selectionnee]
@@ -262,7 +284,7 @@ with onglets[1]:
         st.success("C'est prêt 😊 !")
         st.caption("""
         Ce rapport a été généré automatiquement par une intelligence artificielle
-        et doit être interprété avec prudence. Il s’agit d’une analyse basée
+        et doit être interprété avec prudence. Il s'agit d'une analyse basée
         sur les données fournies ; toute décision doit être complétée par une
         réflexion pédagogique et des échanges avec les équipes enseignantes."""
         )

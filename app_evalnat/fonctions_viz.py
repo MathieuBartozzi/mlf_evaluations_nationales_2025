@@ -4,17 +4,24 @@ import plotly.express as px
 import plotly.graph_objects as go
 from config import *
 import numpy as np
-import plotly.express as px
 import statsmodels.api as sm
+import uuid
 
 
+
+def show_or_return(fig, return_fig=False):
+    """
+    Affiche la figure dans Streamlit ou la retourne.
+    Pour éviter les erreurs, retourne TOUJOURS la figure.
+    """
+    if not return_fig:
+        st.plotly_chart(fig, width="stretch")
+
+    return fig
 
 # =============================
 # Page : vue_reseau.py
 # =============================
-
-
-# moyenne établissement
 @st.cache_data
 def get_moyenne_et_delta(df_global, df_ecole, matiere=None):
     """
@@ -45,32 +52,25 @@ def get_moyenne_et_delta(df_global, df_ecole, matiere=None):
     return moy_ecole, delta
 
 @st.fragment
-def heatmap_scores_par_reseau(df, ordre_niveaux):
-    """Affiche une heatmap des scores moyens par réseau et par niveau."""
-    colonnes_requises = {'Niveau', 'Matière', 'Valeur', 'Réseau'}
-    if not colonnes_requises.issubset(df.columns):
+def heatmap_scores_par_reseau(df, ordre_niveaux, return_fig=False):
+
+    required = {'Niveau', 'Matière', 'Valeur', 'Réseau'}
+    if not required.issubset(df.columns):
         st.error("Le DataFrame doit contenir : Niveau, Matière, Valeur, Réseau.")
-        return
+        return None
 
-    df_filtre = df[df["Matière"].isin(["Français", "Mathématiques"])].copy()
-
-   # @st.fragment
     matiere = st.radio(
         "Choisissez la matière :",
         ("Français", "Mathématiques"),
-        horizontal=True,
-        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
-        key="afficher_top_bottom_evolutions", # Une clé unique suffit
+        horizontal=True
     )
 
     grouped = (
-        df_filtre[df_filtre["Matière"] == matiere]
+        df[df["Matière"] == matiere]
         .groupby(["Réseau", "Niveau"], as_index=False)["Valeur"]
         .mean()
-        .round(1)
     )
     grouped["Niveau"] = pd.Categorical(grouped["Niveau"], categories=ordre_niveaux, ordered=True)
-
     pivot = grouped.pivot(index="Réseau", columns="Niveau", values="Valeur")
 
     fig = px.imshow(
@@ -78,19 +78,15 @@ def heatmap_scores_par_reseau(df, ordre_niveaux):
         color_continuous_scale="Viridis",
         text_auto=True,
         aspect="auto",
-        labels=dict(color="Score moyen"),
+        labels=dict(color="Score moyen")
     )
 
     fig.update_layout(
-        xaxis_title=None,
-        yaxis_title=None,
-        coloraxis_colorbar=dict(title="Score"),
-        margin=dict(l=40, r=20, t=10, b=40),
         height=225,
+        margin=dict(l=40, r=20, t=10, b=40)
     )
 
-    st.plotly_chart(fig, width='stretch')
-
+    return show_or_return(fig, return_fig)
 
 @st.cache_data
 def prepare_map_data(df, df_coordo):
@@ -102,9 +98,9 @@ def prepare_map_data(df, df_coordo):
     df_map = df_map.dropna()
     return df_map
 
-
-def plot_map(df_map):
+def plot_map(df_map, return_fig=False):
     """Affiche la carte interactive des établissements."""
+
     fig = px.scatter_mapbox(
         df_map,
         lat="Lat",
@@ -117,28 +113,37 @@ def plot_map(df_map):
         zoom=1,
         height=474
     )
+
     fig.update_layout(
         mapbox_style="carto-positron",
-        mapbox_center={"lat": df_map["Lat"].mean(), "lon": df_map["Long"].mean()},
+        mapbox_center={
+            "lat": df_map["Lat"].mean(),
+            "lon": df_map["Long"].mean()
+        },
         margin=dict(l=40, r=20, t=10, b=40)
     )
-    st.plotly_chart(fig, width='stretch')
 
+    return show_or_return(fig, return_fig)
 
-def plot_line_chart(df, palette, ordre_niveaux):
+def plot_line_chart(df, palette, ordre_niveaux, return_fig=False):
     """Trace la moyenne des résultats par matière et par niveau."""
+
     moyennes = (
         df.groupby(["Matière", "Niveau"])["Valeur"]
         .mean()
         .reset_index()
         .round(2)
     )
-    moyennes["Niveau"] = pd.Categorical(moyennes["Niveau"], categories=ordre_niveaux, ordered=True)
+    moyennes["Niveau"] = pd.Categorical(
+        moyennes["Niveau"], categories=ordre_niveaux, ordered=True
+    )
     moyennes = moyennes.sort_values(["Matière", "Niveau"]).reset_index(drop=True)
 
     fig = go.Figure()
+
     for matiere in moyennes["Matière"].unique():
         df_mat = moyennes[moyennes["Matière"] == matiere].sort_values("Niveau")
+
         fig.add_trace(
             go.Scatter(
                 x=df_mat["Niveau"],
@@ -160,15 +165,21 @@ def plot_line_chart(df, palette, ordre_niveaux):
             title="Score moyen",
             range=[moyennes["Valeur"].min() - 5, moyennes["Valeur"].max() + 5]
         ),
-        legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="center", x=0.5),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1,
+            xanchor="center",
+            x=0.5
+        ),
         margin=dict(l=40, r=20, t=10, b=40),
     )
 
-    st.plotly_chart(fig, width='stretch')
+    return show_or_return(fig, return_fig)
 
 @st.fragment
 def afficher_top_bottom(df):
-    """Affiche Top 3 et Bottom 3 selon la valeur moyenne, par niveau d’analyse choisi."""
+    """Affiche Top 3 et Bottom 3 selon la valeur moyenne, par niveau d'analyse choisi."""
     colonnes_requises = {'Domaine', 'Compétence', 'Valeur'}
     if not colonnes_requises.issubset(df.columns):
         st.error("Le DataFrame doit contenir les colonnes : Nom_ecole, Domaine, Compétence, Valeur.")
@@ -195,130 +206,23 @@ def afficher_top_bottom(df):
     st.write(f"**Bottom 3 {choix_label.lower()}s**")
     st.dataframe(bottom3, width='stretch')
 
-
-
-
-
-
-def graphique_moyenne_ou_ecart(df, palette):
-    """Graphique combiné multi-critères avec toggle écarts/moyennes."""
-    colonnes_requises = {'Matière', 'Valeur', 'Réseau', 'Statut', 'Homologué'}
-    if not colonnes_requises.issubset(df.columns):
-        st.error("Le DataFrame doit contenir : Matière, Valeur, Réseau, Statut, Homologué.")
-        return
-
-    df_filtre = df[df["Matière"].isin(["Français", "Mathématiques"])].copy()
-    afficher_ecarts = st.toggle("Afficher les écarts à la moyenne globale", value=True)
-    moyenne_globale = df_filtre["Valeur"].mean()
-
-    df_long = pd.concat([
-        df_filtre[["Matière", "Valeur", "Réseau"]].rename(columns={"Réseau": "Critère_valeur"}).assign(Critère="Réseau"),
-        df_filtre[["Matière", "Valeur", "Statut"]].rename(columns={"Statut": "Critère_valeur"}).assign(Critère="Statut"),
-        df_filtre[["Matière", "Valeur", "Homologué"]].rename(columns={"Homologué": "Critère_valeur"}).assign(Critère="Homologué")
-    ])
-
-    grouped = (
-        df_long.groupby(["Critère", "Critère_valeur", "Matière"], as_index=False)["Valeur"]
-        .mean()
-        .rename(columns={"Valeur": "Moyenne"})
-    )
-
-    if afficher_ecarts:
-        grouped["Valeur_affichée"] = grouped["Moyenne"] - moyenne_globale
-        titre_y = "Écart à la moyenne globale"
-    else:
-        grouped["Valeur_affichée"] = grouped["Moyenne"]
-        titre_y = "Moyenne"
-
-    fig = px.bar(
-        grouped,
-        x="Critère_valeur",
-        y="Valeur_affichée",
-        color="Matière",
-        facet_col="Critère",
-        barmode="group",
-        text="Valeur_affichée",
-        color_discrete_map=palette,
-        hover_data={
-        "Critère": False,           # déjà visible dans le titre de facette
-        "Critère_valeur": True,     # ex: Maroc, Privé, Oui
-        "Matière": True,            # Français / Maths
-        "Moyenne": ":.2f",          # valeur brute
-        "Valeur_affichée": ":.2f",  # écart ou valeur
-    }
-    )
-
-    if afficher_ecarts:
-        fig.add_hline(y=0, line_dash="dash", line_color="gray")
-
-    fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
-    fig.update_layout(
-        yaxis_title=titre_y,
-        xaxis_title=None,
-        plot_bgcolor="white",
-        bargap=0.3,
-        showlegend=True,
-        margin=dict(l=40, r=20, t=20, b=40),
-        height=600,
-        legend=dict(
-            orientation="h",       # horizontale
-            yanchor="bottom",
-            y=1.15,                # légèrement au-dessus du graphe
-            xanchor="center",
-            x=0.5
-        ),
-    )
-
-   # Supprime les labels/ticks de l’axe X
-    fig.for_each_xaxis(lambda ax: ax.update(showticklabels=True, title_text=None, matches=None))
-
-
-    # Nettoyage des titres de facettes ("Critère=Réseau" → "Réseau")
-    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
-
-    st.plotly_chart(fig, width='stretch')
-
-
-
 # =============================
 # Page : vue_etablissement.py
 # =============================
 
-def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
-    """
-    Affiche un radar unique combinant tous les domaines (Français + Mathématiques)
-    pour un établissement donné, comparé à la moyenne du réseau.
-    Utilise plotly.express.line_polar pour un rendu fluide et homogène.
-    """
+def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette, return_fig=False):
 
-    # --- Calcul des moyennes par matière et domaine ---
-    df_ecole_mean = (
-        df_ecole.groupby(["Matière", "Domaine"])["Valeur"]
-        .mean()
-        .reset_index()
-    )
-    df_reseau_mean = (
-        df_global.groupby(["Matière", "Domaine"])["Valeur"]
-        .mean()
-        .reset_index()
-    )
+    # Calcul des moyennes
+    df_ecole_mean = df_ecole.groupby(["Matière", "Domaine"])["Valeur"].mean().reset_index()
+    df_reseau_mean = df_global.groupby(["Matière", "Domaine"])["Valeur"].mean().reset_index()
 
-    # --- Ajout du type pour distinguer établissement / réseau ---
-    df_ecole_mean["Type"] = f"{ecole_selectionnee}"
+    df_ecole_mean["Type"] = ecole_selectionnee
     df_reseau_mean["Type"] = "Moyenne réseau"
 
-    df_radar = pd.concat([df_ecole_mean, df_reseau_mean], axis=0)
-
-    # --- Domaine complet = "Matière - Domaine" ---
+    df_radar = pd.concat([df_ecole_mean, df_reseau_mean])
     df_radar["Domaine complet"] = df_radar["Matière"] + " - " + df_radar["Domaine"]
 
-    # --- Couleurs : palette issue de config ---
-    color_map = {
-        f"{ecole_selectionnee}": palette["etab"],  # couleur de base, on ajustera ensuite
-        "Moyenne réseau": palette["réseau"],
-    }
-
-    # --- Construction du radar ---
+    # Radar Plotly
     fig = px.line_polar(
         df_radar,
         r="Valeur",
@@ -326,11 +230,15 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
         color="Type",
         line_close=True,
         markers=True,
-        color_discrete_map=color_map,
-
+        color_discrete_map={
+            ecole_selectionnee: palette["etab"],
+            "Moyenne réseau": palette["réseau"]
+        }
     )
 
-    # --- Mise en forme Plotly ---
+    # Mise en forme
+    fig.update_traces(fill="toself")
+
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
@@ -354,27 +262,12 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
         plot_bgcolor="white",
         paper_bgcolor="white",
     )
-    fig.update_traces(fill='toself')
 
-
-    st.plotly_chart(fig, width='stretch')
+    return show_or_return(fig, return_fig)
 
 @st.fragment
-def plot_heatmap_competences(df_ecole,ordre_niveaux):
+def plot_heatmap_competences(df_ecole, matiere,ordre_niveaux, return_fig=False):
     """Affiche la carte de chaleur des compétences selon le niveau."""
-    # matiere = st.segmented_control(
-    #     "Choisissez la matière :", ["Français", "Mathématiques"], default="Français"
-    # )
-    # if matiere is None:
-    #     matiere = "Français"
-    matiere = st.radio(
-        "Choisissez la matière :", # Ajout d'un label visible pour meilleure UX
-        ("Français", "Mathématiques"),
-        horizontal=True,
-        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
-        key="plot_heatmap_competences", # Une clé unique suffit
-    )
-
 
     df_mat = df_ecole[df_ecole["Matière"] == matiere]
 
@@ -387,7 +280,7 @@ def plot_heatmap_competences(df_ecole,ordre_niveaux):
 
     if grouped.empty:
         st.warning("Pas de données suffisantes pour cet établissement.")
-        return
+        return None
 
     pivot = grouped.pivot(index="Compétence", columns="Niveau", values="Valeur")
 
@@ -399,12 +292,16 @@ def plot_heatmap_competences(df_ecole,ordre_niveaux):
         labels=dict(color="Score moyen (%)")
     )
 
-    fig.update_layout(height=500, margin=dict(l=40, r=40, t=20, b=40),xaxis_title=None,yaxis_title=None )
-    st.plotly_chart(fig, width='stretch')
+    fig.update_layout(
+        height=500,
+        margin=dict(l=40, r=40, t=20, b=40),
+        xaxis_title=None,
+        yaxis_title=None
+    )
 
+    return show_or_return(fig, return_fig)
 
-
-def plot_scatter_comparatif(df, ecole_selectionnee,palette):
+def plot_scatter_comparatif(df, ecole_selectionnee, palette, return_fig=False):
     """Compare les établissements sur la moyenne Math vs Français avec régression."""
 
     # On calcule la moyenne par établissement et matière
@@ -415,19 +312,19 @@ def plot_scatter_comparatif(df, ecole_selectionnee,palette):
         .reset_index()
     )
 
-    # Renommer les colonnes si besoin
+    # Vérification colonnes
     if "Français" not in df_m.columns or "Mathématiques" not in df_m.columns:
-        st.warning("Les données sont incomplètes (une matière manquante). Impossible d’afficher la comparaison.")
-        return
+        st.warning("Les données sont incomplètes (une matière manquante). Impossible d'afficher la comparaison.")
+        return None
 
-    # Supprimer les écoles sans les deux matières
+    # Supprimer les écoles incomplètes
     df_m = df_m.dropna(subset=["Français", "Mathématiques"])
 
     if df_m.empty:
         st.warning("Aucune donnée suffisante pour générer le graphique comparatif.")
-        return
+        return None
 
-    # Création du scatter général
+    # Scatter principal
     fig = px.scatter(
         df_m,
         x="Mathématiques",
@@ -435,9 +332,10 @@ def plot_scatter_comparatif(df, ecole_selectionnee,palette):
         opacity=0.6,
         color_discrete_sequence=[palette["réseau"]],
         trendline="ols",
+        height=450
     )
 
-    # Mise en avant de l’établissement sélectionné
+    # Mise en avant de l'établissement sélectionné
     df_sel = df_m[df_m["Nom_ecole"] == ecole_selectionnee]
     if not df_sel.empty:
         fig.add_trace(go.Scatter(
@@ -446,15 +344,19 @@ def plot_scatter_comparatif(df, ecole_selectionnee,palette):
             mode="markers+text",
             text=df_sel["Nom_ecole"],
             textposition="top center",
-            marker=dict(size=14, color=palette["etab"], line=dict(width=2, color="white"), symbol="diamond"),
+            marker=dict(
+                size=14,
+                color=palette["etab"],
+                line=dict(width=2, color="white"),
+                symbol="diamond"
+            ),
             name=ecole_selectionnee,
         ))
     else:
-        st.info("⚠️ L’établissement sélectionné n’a pas de données complètes pour ce graphique.")
+        st.info("⚠️ L'établissement sélectionné n'a pas de données complètes pour ce graphique.")
 
-    # Mise en forme
+    # Mise en page
     fig.update_layout(
-        height=450,
         margin=dict(l=40, r=40, t=40, b=40),
         xaxis_title="Moyenne Mathématiques (%)",
         yaxis_title="Moyenne Français (%)",
@@ -462,13 +364,15 @@ def plot_scatter_comparatif(df, ecole_selectionnee,palette):
         showlegend=False,
     )
 
-    st.plotly_chart(fig, width='stretch')
+    return show_or_return(fig, return_fig)
 
 # --------------------------------------------
 # Pie chart distribution des clusters
 # --------------------------------------------
 @st.fragment
-def plot_pie_clusters(df_feat):
+def plot_pie_clusters(df_feat, return_fig=False):
+    """Affiche la distribution des clusters en camembert."""
+
     cluster_counts = df_feat["cluster"].value_counts().sort_index()
 
     fig = px.pie(
@@ -476,30 +380,31 @@ def plot_pie_clusters(df_feat):
         values=cluster_counts.values,
         hole=0.4,
         color=[str(i) for i in cluster_counts.index],
-        color_discrete_map={
-            str(k): v for k, v in CLUSTER_COLORS.items()
-        }
-
+        color_discrete_map={str(k): v for k, v in CLUSTER_COLORS.items()}
     )
-    fig.update_layout(
-            height=400,
-            margin=dict(l=0, r=0, t=40, b=40),
-            legend=dict(
-                orientation="h",      # horizontal
-                yanchor="bottom",
-                y=-0.2,               # sous le graphique
-                xanchor="center",
-                x=0.5,
-            )
-        )
 
-    st.plotly_chart(fig, width='stretch')
+    fig.update_layout(
+        height=400,
+        margin=dict(l=0, r=0, t=40, b=40),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+        )
+    )
+
+    return show_or_return(fig, return_fig)
+
 
 # --------------------------------------------
 # PCA 3D avec point de l'établissement surligné
 # --------------------------------------------
 @st.fragment
-def plot_pca_3d(df_pca, ecole_selectionnee,palette):
+def plot_pca_3d(df_pca, ecole_selectionnee, palette, return_fig=False):
+    """Affiche la PCA 3D avec mise en avant de l'établissement sélectionné."""
+
     df_pca = df_pca.copy()
     df_pca["cluster_str"] = df_pca["cluster"].astype(str)
 
@@ -509,70 +414,77 @@ def plot_pca_3d(df_pca, ecole_selectionnee,palette):
         color="cluster_str",
         hover_name="Nom_ecole",
         opacity=0.8,
-        color_discrete_map={
-            str(k): v for k, v in CLUSTER_COLORS.items()
-        }
+        color_discrete_map={str(k): v for k, v in CLUSTER_COLORS.items()},
+        height=400
     )
 
-    # mise en avant établissement
+    # Mise en avant de l'établissement sélectionné
     df_sel = df_pca[df_pca["Nom_ecole"] == ecole_selectionnee]
     if not df_sel.empty:
         fig.add_trace(go.Scatter3d(
-            x=df_sel["PC1"], y=df_sel["PC2"], z=df_sel["PC3"],
+            x=df_sel["PC1"],
+            y=df_sel["PC2"],
+            z=df_sel["PC3"],
             mode="markers+text",
             text=[ecole_selectionnee],
             textposition="top center",
-            marker=dict(size=14, color=palette['etab'], line=dict(width=3, color="white"),opacity=1, symbol="diamond"),
-            name="Établissement sélectionné",
-
+            marker=dict(
+                size=14,
+                color=palette['etab'],
+                line=dict(width=3, color="white"),
+                opacity=1,
+                symbol="diamond"
+            ),
+            name="Établissement sélectionné"
         ))
 
-    fig.update_layout(height=400, margin=dict(l=0, r=0, t=0, b=0))
-    fig.update_layout(showlegend=False)
-    fig.update_layout(scene=dict(
-    xaxis_title="1 – Fondamentaux",
-    yaxis_title="2 – Automatisation",
-    zaxis_title="3 – Complexité",
-))
+    # Mise en forme
     fig.update_layout(
-    scene_camera=dict(
-        eye=dict(x=0.7, y=0.7, z=0.8),
-        up=dict(x=0, y=0, z=1),
-        center=dict(x=0, y=0, z=0)
-    ))
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=False,
+        scene=dict(
+            xaxis_title="1 - Fondamentaux",
+            yaxis_title="2 - Automatisation",
+            zaxis_title="3 - Complexité",
+        ),
+        scene_camera=dict(
+            eye=dict(x=0.7, y=0.7, z=0.8),
+            up=dict(x=0, y=0, z=1),
+            center=dict(x=0, y=0, z=0)
+        )
+    )
 
-    st.plotly_chart(fig, width='stretch')
-
+    return show_or_return(fig, return_fig)
 
 def get_recommandations_profil(profil):
     recommandations = {
         1: """
-**Recommandations – Profil 1**
+**Recommandations - Profil 1**
 
 - Renforcer le calcul mental structuré quotidien
 - Consolider les techniques opératoires
 - Introduire plus de tâches numériques répétées
-- Utiliser des rituels courts d’automatisation
+- Utiliser des rituels courts d'automatisation
 - Introduire davantage de tâches numériques répétées et ritualisées
-- Utiliser des rituels courts d’automatisation (5–7 min)
-- S’appuyer sur leurs forces en compréhension pour aborder la résolution de problèmes (verbalisation, reformulation)
+- Utiliser des rituels courts d'automatisation (5-7 min)
+- S'appuyer sur leurs forces en compréhension pour aborder la résolution de problèmes (verbalisation, reformulation)
 - Articuler compréhension ↔ nombre : petits problèmes contextualisés pour automatiser les faits numériques
 """,
 
         2: """
-**Recommandations – Profil 2**
-- Harmoniser les progressions CP–CM2
-- Structurer un référentiel de compétences d’école
+**Recommandations - Profil 2**
+- Harmoniser les progressions CP-CM2
+- Structurer un référentiel de compétences d'école
 - Organiser des conseils de cycle ciblés
 - Mettre en place des pratiques pédagogiques communes
-- Prioriser les fondamentaux en CP–CE1 : langage oral, décodage, numération
+- Prioriser les fondamentaux en CP-CE1 : langage oral, décodage, numération
 - Renforcer la cohérence interclasses via des outils partagés (fiches méthodes, traces écrites types)
 """,
 
         3: """
-**Recommandations – Profil 3**
+**Recommandations - Profil 3**
 
-- Identifier 2–3 fragilités précises pour cibler les actions d’amélioration
+- Identifier 2-3 fragilités précises pour cibler les actions d'amélioration
 - Valoriser et diffuser les pratiques efficaces existantes
 - Introduire des défis cognitifs pour maintenir une dynamique de progression
 - Développer la métacognition (explicitation des stratégies)
@@ -581,27 +493,23 @@ def get_recommandations_profil(profil):
 """,
 
         4: """
-**Recommandations – Profil 4**
+**Recommandations - Profil 4**
 
 - Travail intensif et structuré de la compréhension
 - Renforcer les langages et le vocabulaire (rituels lexicaux, catégorisation)
 - Problèmes verbalisés : expliciter la démarche, reformuler, questionner
-- Ateliers de raisonnement et d’inférences
-- Développer des stratégies de lecture explicites : repérage d’informations, segmentation, liens logiques
+- Ateliers de raisonnement et d'inférences
+- Développer des stratégies de lecture explicites : repérage d'informations, segmentation, liens logiques
 - Mobiliser leurs compétences mathématiques pour soutenir la compréhension(lecture comme résolution de problème : étapes, indices, preuves)
 """
     }
     return recommandations.get(profil, "Profil inconnu")
-
 
 def color_dot(color):
     return f'<span style="color:{color};font-size:2em;">●</span>'
 
 def square(color):
     return f'<span style="background:{color}; width:12px; height:12px; display:inline-block;"></span>'
-
-
-
 
 # --------------------------------------------
 # page 3
@@ -615,14 +523,6 @@ def vue_top_bottom_matiere(df, matiere, n=5):
         "-": ":material/remove:  maîtrisées",
     }
 
-    # choix = st.segmented_control(
-    #     f"{matiere}",
-    #     options=options_map.keys(),
-    #     format_func=lambda o: options_map[o],
-    #     selection_mode="single",
-    #     default="+",
-    #     key=key_segment,   # 🔑 clé unique obligatoire
-    # )
     choix = st.radio(
         f"{matiere}",
         options=options_map.keys(),
@@ -630,10 +530,6 @@ def vue_top_bottom_matiere(df, matiere, n=5):
         horizontal=True,
         key=key_segment,   # clé unique → essentiel
     )
-
-
-
-
 
     df_mat = df[df["Matière"] == matiere]
     df_mean = df_mat.groupby("Compétence")["Valeur"].mean().reset_index()
@@ -646,8 +542,7 @@ def vue_top_bottom_matiere(df, matiere, n=5):
     else:
         st.dataframe(bottom_n, width='stretch')
 
-
-def plot_distribution_competences(df, nbins=30):
+def plot_distribution_competences(df, palette, nbins=30, return_fig=False):
     """
     Histogramme des scores des COMPÉTENCES.
     1 point = 1 compétence (moyenne réseau).
@@ -665,8 +560,7 @@ def plot_distribution_competences(df, nbins=30):
         color="Matière",
         nbins=nbins,
         barmode="overlay",
-        color_discrete_map=palette,
-
+        color_discrete_map=palette
     )
 
     fig.update_layout(
@@ -683,11 +577,10 @@ def plot_distribution_competences(df, nbins=30):
         yaxis_title="Nombre de compétences",
     )
 
-    st.plotly_chart(fig, width='stretch')
+    return show_or_return(fig, return_fig)
 
-
-
-def plot_swarm_competences(df, palette, seuil_std=12, height=480):
+def plot_swarm_competences(df, palette, seuil_std=12, height=480, return_fig=False):
+    """Affiche un swarm plot des compétences avec coloration discriminante."""
 
     df = df.copy()
 
@@ -706,13 +599,14 @@ def plot_swarm_competences(df, palette, seuil_std=12, height=480):
         axis=1
     )
 
-    # 4. Jitter pour simuler le swarm
+    # 4. Jitter pour l'effet swarm
     jitter = np.random.uniform(-0.05, 0.05, size=len(df))
     df["x_jitter"] = df["Comp_idx"] + jitter
 
+    # Figure
     fig = go.Figure()
 
-    # ========= TRACE SWARM UNIQUE =========
+    # ========= TRACE SWARM PRINCIPAL =========
     fig.add_trace(go.Scatter(
         x=df["x_jitter"],
         y=df["Valeur"],
@@ -723,9 +617,9 @@ def plot_swarm_competences(df, palette, seuil_std=12, height=480):
             opacity=0.6
         ),
         hovertemplate=(
-            "<b>%{customdata[0]}</b><br>" +
-            "Matière : %{customdata[1]}<br>" +
-            "Valeur : %{y:.1f}%<br>" +
+            "<b>%{customdata[0]}</b><br>"
+            "Matière : %{customdata[1]}<br>"
+            "Valeur : %{y:.1f}%<br>"
             "<extra></extra>"
         ),
         customdata=np.stack([df["Compétence"], df["Matière"]], axis=1),
@@ -756,7 +650,6 @@ def plot_swarm_competences(df, palette, seuil_std=12, height=480):
     fig.update_layout(
         height=height,
         margin=dict(l=20, r=20, t=40, b=20),
-
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -765,7 +658,6 @@ def plot_swarm_competences(df, palette, seuil_std=12, height=480):
             x=0.5,
             font=dict(size=13)
         ),
-
         xaxis=dict(
             tickmode="array",
             tickvals=list(range(len(compet_order))),
@@ -775,8 +667,7 @@ def plot_swarm_competences(df, palette, seuil_std=12, height=480):
         yaxis=dict(title="% de maîtrise")
     )
 
-    return fig
-
+    return show_or_return(fig, return_fig)
 
 def list_competences_discriminantes(df, seuil_std=12):
     """
@@ -801,9 +692,7 @@ def list_competences_discriminantes(df, seuil_std=12):
 
     return df_fr, df_math
 
-
-
-def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
+def plot_scatter_dispersion(df, palette, seuil_std=12, height=520, return_fig=False):
 
     df = df.copy()
 
@@ -819,10 +708,9 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
 
     # Couleur : rouge si discriminante, sinon palette matière
     df_disp["color_display"] = df_disp.apply(
-        lambda r: ("#d62728" if r["is_discri"] else palette[r["Matière"]]),
+        lambda r: "#d62728" if r["is_discri"] else palette[r["Matière"]],
         axis=1
     )
-
 
     # ===============================
     # 3. Scatter principal
@@ -837,7 +725,6 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
         color_discrete_map="identity"
     )
 
-    # Taille unique des points
     fig.update_traces(marker=dict(size=10, line=dict(width=0)))
 
     # ===============================
@@ -845,14 +732,13 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
     # ===============================
     ymax = df_disp["std"].max() + 2
 
-    # fig.add_shape(type="rect", x0=0, x1=50, y0=0, y1=ymax,
-    #               fillcolor="rgba(255,0,0,0.06)", line_width=0)
-
-    # fig.add_shape(type="rect", x0=85, x1=100, y0=0, y1=ymax,
-    #               fillcolor="rgba(0,150,255,0.08)", line_width=0)
-
-    fig.add_shape(type="rect", x0=50, x1=85, y0=seuil_std, y1=ymax,
-                  fillcolor="rgba(255,0,0,0.06)", line_width=0)
+    fig.add_shape(
+        type="rect",
+        x0=50, x1=85,
+        y0=seuil_std, y1=ymax,
+        fillcolor="rgba(255,0,0,0.06)",
+        line_width=0
+    )
 
     # ===============================
     # 5. Lignes de référence
@@ -864,17 +750,15 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
     # ===============================
     # 6. Annotations
     # ===============================
-    fig.add_annotation(x=45, y=ymax - 0.5, text="Difficiles", showarrow=False,
-                       font=dict(size=12))
-    fig.add_annotation(x=92, y=ymax - 0.5, text="Stables", showarrow=False,
-                       font=dict(size=12))
-    fig.add_annotation(x=67, y=ymax - 0.5, text="À surveiller", showarrow=False,
-                       font=dict(size=12))
+    fig.add_annotation(x=45, y=ymax - 0.5, text="Difficiles", showarrow=False, font=dict(size=12))
+    fig.add_annotation(x=92, y=ymax - 0.5, text="Stables", showarrow=False, font=dict(size=12))
+    fig.add_annotation(x=67, y=ymax - 0.5, text="À surveiller", showarrow=False, font=dict(size=12))
 
     # ===============================
     # 7. Courbe LOWESS
     # ===============================
     lowess = sm.nonparametric.lowess(df_disp["std"], df_disp["mean"], frac=0.2)
+
     fig.add_trace(go.Scatter(
         x=lowess[:, 0],
         y=lowess[:, 1],
@@ -884,22 +768,28 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
     ))
 
     # ===============================
-    # 8. Nouvelle légende simplifiée
+    # 8. Légende manuelle
     # ===============================
     legend_items = [
         go.Scatter(x=[None], y=[None], mode='markers',
                    marker=dict(size=10, color=palette["Français"]),
                    name="Français"),
+
         go.Scatter(x=[None], y=[None], mode='markers',
                    marker=dict(size=10, color=palette["Mathématiques"]),
                    name="Mathématiques"),
+
         go.Scatter(x=[None], y=[None], mode='markers',
                    marker=dict(size=10, color="#d62728"),
                    name="Compétences discriminantes"),
     ]
+
     for item in legend_items:
         fig.add_trace(item)
 
+    # ===============================
+    # 9. Mise en forme
+    # ===============================
     fig.update_layout(
         legend=dict(
             orientation="h",
@@ -908,13 +798,12 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
             xanchor="center",
             font=dict(size=14)
         ),
-        xaxis=dict(range=[40, 100]),   # <--- commence à 0 !
+        xaxis=dict(range=[40, 100]),
         height=height,
-        margin=dict(l=20, r=20, t=80, b=20),
+        margin=dict(l=20, r=20, t=80, b=20)
     )
 
-    return fig
-
+    return show_or_return(fig, return_fig)
 
 
 @st.fragment
@@ -981,159 +870,25 @@ def afficher_top_bottom_evolutions(df):
     st.write("**Bottom 3 régressions (compétence)**")
     st.dataframe(bottom3, width='stretch')
 
-
-# def afficher_bar_domaine_prog(df):
-#     """Affiche un barplot des progressions moyennes par domaine (colonne slope)."""
-
-#     colonnes_requises = {"Domaine", "slope"}
-#     if not colonnes_requises.issubset(df.columns):
-#         st.error("Le DataFrame doit contenir les colonnes : Domaine, slope.")
-#         return
-
-#     df_dom = (
-#         df.groupby("Domaine")["slope"]
-#         .mean()
-#         .reset_index()
-#         .sort_values("slope")
-#     )
-
-#     df_dom["Couleur"] = df_dom["slope"].apply(
-#         lambda x: "Progression" if x >= 0 else "Régression"
-#     )
-
-#     fig = px.bar(
-#         df_dom,
-#         x="Domaine",
-#         y="slope",
-#         color="Couleur",
-#         color_discrete_map=palette,
-#         height=550
-#     )
-
-#     # ---- AXES SIMPLIFIÉS ----
-#     fig.update_xaxes(
-#         title=None,       # ❌ enlève "Domaine"
-#         tickangle=35      # Rotation lisible
-#     )
-
-#     fig.update_yaxes(
-#         title="Pente (slope)"   # ✔️ remet slope à gauche
-#     )
-
-#     # ---- LÉGENDE ----
-#     fig.update_layout(
-#         margin=dict(l=0, r=0, t=40, b=0),
-#         legend_title=None,  # ❌ enlève "Couleur"
-#         legend=dict(
-#             orientation="h",
-#             y=1.15,
-#             x=0.5,
-#             xanchor="center",
-#             font=dict(size=14)
-#         ),
-#         template="simple_white"  # ✔️ style propre et sobre
-#     )
-#     fig.add_hline(y=0, line_color="black", line_width=1)
-
-#     st.plotly_chart(fig, width='stretch')
-
-
-
-# def plot_regularity_vs_slope(df, palette):
-
-#     df = df.copy()
-#     df["spearman"] = df["spearman"].abs()
-
-#     # FIGURE DE BASE
-#     fig = px.scatter(
-#         df,
-#         x="slope",
-#         y="spearman",
-#         color="Domaine",
-#         # hover_data=["Compétence"],
-#         color_discrete_map=palette,
-#         height=500
-#     )
-
-#     # limites pour les zones
-#     x_min = df["slope"].min()
-#     x_max = df["slope"].max()
-#     y_min = df["spearman"].min()
-#     y_max = df["spearman"].max()
-
-#     # === QUADRANTS ===
-#     fig.add_shape(
-#         type="rect",
-#         # x0=0, x1=x_max, y0=0, y1=y_max,
-#         fillcolor="rgba(0, 180, 0, 0.1)",  # vert doux
-#         line_width=0,
-#         layer="below"
-#     )  # +pente / +spearman
-
-#     fig.add_shape(
-#         type="rect",
-#         x0=0, x1=x_max, y0=y_min, y1=0,
-#         fillcolor="rgba(0, 120, 255, 0.1)",  # bleu clair
-#         line_width=0,
-#         layer="below"
-#     )  # +pente / -spearman
-
-#     fig.add_shape(
-#         type="rect",
-#         x0=x_min, x1=0, y0=0, y1=y_max,
-#         fillcolor="rgba(255, 200, 0, 0.15)",  # jaune
-#         line_width=0,
-#         layer="below"
-#     )  # -pente / +spearman
-
-#     fig.add_shape(
-#         type="rect",
-#         x0=x_min, x1=0, y0=y_min, y1=0,
-#         fillcolor="rgba(255, 0, 0, 0.1)",  # rouge léger
-#         line_width=0,
-#         layer="below"
-#     )  # -pente / -spearman
-
-#     # LIGNES CENTRALES
-#     fig.add_hline(y=0, line_color="black", line_width=1)
-#     fig.add_vline(x=0, line_color="black", line_width=1)
-
-#     fig.update_layout(
-#         legend=dict(
-#             orientation="h",
-#             y=1.18,
-#             x=0.5,
-#             xanchor="center",
-#             font=dict(size=14)
-#         ),
-#         margin=dict(l=0, r=0, t=40, b=0),
-#         xaxis_title="Pente (slope)",
-#         yaxis_title="Corrélation de Spearman",
-#         legend_title="",
-#         template="simple_white"
-
-#     )
-#     fig.update_traces(marker=dict(size=10, line=dict(width=0)))
-
-#     st.plotly_chart(fig, width='stretch')
-
-
 def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
+    """
+    Affiche plusieurs courbes de progression (une par compétence) dans une grille Streamlit.
+    Fonction d'affichage uniquement (pas de return figure).
+    """
+
     comps = df_evol[df_evol["nb_niveaux"] == nb_niveaux]["Compétence"].unique()
 
-    # 👉 Si aucune compétence pour ce nombre de niveaux, afficher un message clair
+    # Si aucune compétence trouvée
     if len(comps) == 0:
         st.info(
-            f"Aucune compétence n’a été évaluée sur {nb_niveaux} niveaux. "
+            f"Aucune compétence n'a été évaluée sur {nb_niveaux} niveaux. "
             "Essayez un autre nombre de niveaux pour visualiser des progressions."
         )
-        return  # On sort proprement de la fonction
+        return
 
     n = len(comps)
-    # n_rows = math.ceil(n / n_cols)
-
     index = 0
-    # for r in range(n_rows):
+
     cols = st.columns(n_cols)
 
     for col in cols:
@@ -1152,86 +907,19 @@ def afficher_courbes_en_grille(df_reseau, df_evol, nb_niveaux=3, n_cols=4):
         )
 
         fig_c.update_layout(
-           title=dict(
-               text=c,
-               font=dict(size=10),
-               x=0
-               )
-           )
+            title=dict(
+                text=c,
+                font=dict(size=10),
+                x=0
+            )
+        )
         fig_c.update_yaxes(title="")
         fig_c.update_xaxes(title="")
-        # fig_c.update_xaxes(title_font=dict(size=11))
 
-        col.plotly_chart(fig_c, width='stretch')
+        col.plotly_chart(fig_c, width="stretch")
         index += 1
 
-
-
-# def afficher_bars_progression_regularity(df, palette):
-#     """
-#     Affiche un bar chart comparatif normalisé (entre -1 et +1)
-#     montrant la progression (pente) et la régularité (|Spearman|)
-#     par domaine.
-
-#     Le df doit contenir les colonnes :
-#         - 'Domaine'
-#         - 'slope'
-#         - 'spearman'
-#     """
-
-#     colonnes_requises = {"Domaine", "slope", "spearman"}
-#     if not colonnes_requises.issubset(df.columns):
-#         st.error("Le DataFrame doit contenir : Domaine, slope, spearman.")
-#         return
-
-#     df_plot = df.copy()
-#     df_plot["spearman_abs"] = df_plot["spearman"].abs()
-
-#     # --- Normalisation min–max sécurisée ---
-#     for col in ["slope", "spearman_abs"]:
-#         cmin = df_plot[col].min()
-#         cmax = df_plot[col].max()
-#         if cmax - cmin == 0:
-#             df_plot[col + "_norm"] = 0
-#         else:
-#             df_plot[col + "_norm"] = (df_plot[col] - cmin) / (cmax - cmin) * 2 - 1
-
-#     # --- Préparation long format pour plotly ---
-#     df_long = df_plot.melt(
-#         id_vars=["Domaine"],
-#         value_vars=["slope_norm", "spearman_abs_norm"],
-#         var_name="Indicateur",
-#         value_name="Valeur"
-#     )
-
-#     # --- Bar chart ---
-#     fig = px.bar(
-#         df_long,
-#         x="Valeur",
-#         y="Domaine",
-#         color="Indicateur",
-#         barmode="group",
-#         orientation="h",
-#         color_discrete_map=palette
-#     )
-
-#     fig.update_layout(
-#         # title="Progression et régularité  par domaine",
-#         template="simple_white",
-#         height=500,
-#         legend=dict(
-#             orientation="h",
-#             y=-0.15,
-#             x=0.5,
-#             xanchor="center"
-#         ),
-#         xaxis=dict(title=""),
-#         yaxis=dict(title="")
-#     )
-
-#     st.plotly_chart(fig, width='stretch')
-
-def afficher_bars_progression_regularity(df, palette):
+def afficher_bars_progression_regularity(df, palette, return_fig=False):
     """
     Affiche un bar chart comparatif normalisé :
         - pente ∈ [-1, +1]
@@ -1242,7 +930,7 @@ def afficher_bars_progression_regularity(df, palette):
     colonnes_requises = {"Domaine", "slope", "spearman"}
     if not colonnes_requises.issubset(df.columns):
         st.error("Le DataFrame doit contenir : Domaine, slope, spearman.")
-        return
+        return None
 
     df_plot = df.copy()
     df_plot["spearman_abs"] = df_plot["spearman"].abs()
@@ -1263,19 +951,19 @@ def afficher_bars_progression_regularity(df, palette):
     else:
         df_plot["spearman_abs_norm"] = (df_plot["spearman_abs"] - smin) / (smax - smin)
 
-    # --- Passage en long format ---
+    # Mise au format long
     df_long = df_plot.melt(
         id_vars=["Domaine"],
         value_vars=["slope_norm", "spearman_abs_norm"],
         var_name="Indicateur",
         value_name="Valeur"
     )
-    #Renomage personnalisé des indicateurs pour la légende
+
+    # Renommage
     df_long["Indicateur"] = df_long["Indicateur"].replace({
         "slope_norm": "Progression",
         "spearman_abs_norm": "Régularité"
     })
-
 
     # --- Bar chart ---
     fig = px.bar(
@@ -1302,4 +990,4 @@ def afficher_bars_progression_regularity(df, palette):
         yaxis=dict(title="")
     )
 
-    st.plotly_chart(fig, width='stretch')
+    return show_or_return(fig, return_fig)
