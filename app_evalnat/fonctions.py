@@ -14,26 +14,23 @@ from io import BytesIO
 import plotly.io as pio
 from fpdf import FPDF
 from fonctions_viz import *
-from PIL import Image
 
-# def fig_to_png(fig):
-#     svg_bytes = pio.to_image(fig, format="svg")
-#     svg_img = Image.open(io.BytesIO(svg_bytes))
-
-#     buf = io.BytesIO()
-#     svg_img.save(buf, format="PNG")
-#     return buf.getvalue()
+import imgkit
+import tempfile
 
 def fig_to_png(fig):
-    # Export en SVG sans Kaleido (format vectoriel)
-    svg_str = fig.to_image(format="svg")
+    # Export de la figure Plotly en HTML (sans Kaleido)
+    html_str = pio.to_html(fig, full_html=False)
 
-    # Conversion SVG → PNG via Pillow (Pillow sait lire le SVG)
-    image = Image.open(io.BytesIO(svg_str))
+    # Sauvegarde HTML temporaire
+    with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as f_html:
+        f_html.write(html_str.encode("utf-8"))
+        html_path = f_html.name
 
-    buf = io.BytesIO()
-    image.save(buf, format="PNG")
-    return buf.getvalue()
+    # Conversion HTML → PNG via wkhtmltoimage (indépendant de Chrome)
+    png_bytes = imgkit.from_file(html_path, False)  # False = retourne bytes
+
+    return png_bytes
 
 # ---------------------------------------------------------
 #   FONCTION  : Générer un rapport d'analyse pour un établissement
