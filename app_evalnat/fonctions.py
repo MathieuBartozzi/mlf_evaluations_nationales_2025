@@ -14,6 +14,15 @@ from io import BytesIO
 import plotly.io as pio
 from fpdf import FPDF
 from fonctions_viz import *
+from PIL import Image
+
+def fig_to_png(fig):
+    svg_bytes = pio.to_image(fig, format="svg")
+    svg_img = Image.open(io.BytesIO(svg_bytes))
+
+    buf = io.BytesIO()
+    svg_img.save(buf, format="PNG")
+    return buf.getvalue()
 
 # ---------------------------------------------------------
 #   FONCTION  : Générer un rapport d'analyse pour un établissement
@@ -496,7 +505,8 @@ def generate_pdf(df_ecole, df_global, df_feat, df_pca,
     pdf.cell(0, 7, "Positionnement par domaine", ln=True)
 
     fig_radar = plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette, return_fig=True)
-    img_radar = pio.to_image(fig_radar, format="png", scale=3)
+    # img_radar = pio.to_image(fig_radar, format="png", scale=3)
+    img_radar = fig_to_png(fig_radar)
     pdf.image(BytesIO(img_radar), w=170)
     pdf.ln(4)
 
