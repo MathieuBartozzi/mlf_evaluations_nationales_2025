@@ -542,7 +542,7 @@ def vue_top_bottom_matiere(df, matiere, n=5):
     else:
         st.dataframe(bottom_n, width='stretch')
 
-def plot_distribution_competences(df, palette, nbins=30, return_fig=False):
+def plot_distribution_competences(df, palette, return_fig=False):
     """
     Histogramme des scores des COMPÉTENCES.
     1 point = 1 compétence (moyenne réseau).
@@ -558,7 +558,7 @@ def plot_distribution_competences(df, palette, nbins=30, return_fig=False):
         df_comp,
         x="Valeur",
         color="Matière",
-        nbins=nbins,
+        # nbins=nbins,
         barmode="overlay",
         color_discrete_map=palette
     )

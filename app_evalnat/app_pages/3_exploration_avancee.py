@@ -72,7 +72,7 @@ with onglets[0]:
         with col1:
             # fig = px.histogram(df, x="Valeur", color="Matière", barmode="overlay", nbins=30)
             # st.plotly_chart(fig, width='stretch')
-            plot_distribution_competences(df, palette, nbins=10)
+            plot_distribution_competences(df, palette)
 
         # COLONNE 2 : distribution par matière sélectionnée
         with col2:
