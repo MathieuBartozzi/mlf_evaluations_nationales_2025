@@ -157,41 +157,6 @@ with onglets[0]:
     # 🚀 EXPORT PDF (GENERATION + TELECHARGEMENT)
     # --------------------------------------
 
-    # 1️⃣ Bouton pour générer le PDF (affiché si PDF pas encore prêt)
-    if not st.session_state.get("pdf_ready", False):
-
-        if st.button("Convertir la page en PDF", type="secondary", icon=":material/settings:"):
-            with st.spinner("🚧 Création du PDF en cours..."):
-                pdf_bytes = generate_pdf(
-                    df_ecole,
-                    df,
-                    df_feat,
-                    df_pca,
-                    ecole_selectionnee,
-                    ordre_niveaux,
-                    palette,
-                )
-
-            # stockage du PDF en session
-            st.session_state["pdf_bytes"] = pdf_bytes
-            st.session_state["pdf_ready"] = True
-
-            # rafraîchir l'UI pour afficher le download button
-            st.rerun()
-
-    # 2️⃣ Si PDF prêt → afficher un **unique bouton de téléchargement**
-    else:
-        st.success("Le PDF est prêt ✅")
-
-        st.download_button(
-            label="Télécharger le PDF",
-            data=st.session_state["pdf_bytes"],
-            file_name=f"rapport_{ecole_selectionnee}.pdf",
-            mime="application/pdf",
-            type="primary",
-            icon=":material/download:"
-        )
-
 
 with onglets[1]:
 # st.divider()
