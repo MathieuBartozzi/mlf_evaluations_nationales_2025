@@ -16,12 +16,23 @@ from fpdf import FPDF
 from fonctions_viz import *
 from PIL import Image
 
+# def fig_to_png(fig):
+#     svg_bytes = pio.to_image(fig, format="svg")
+#     svg_img = Image.open(io.BytesIO(svg_bytes))
+
+#     buf = io.BytesIO()
+#     svg_img.save(buf, format="PNG")
+#     return buf.getvalue()
+
 def fig_to_png(fig):
-    svg_bytes = pio.to_image(fig, format="svg")
-    svg_img = Image.open(io.BytesIO(svg_bytes))
+    # Export en SVG sans Kaleido (format vectoriel)
+    svg_str = fig.to_image(format="svg")
+
+    # Conversion SVG → PNG via Pillow (Pillow sait lire le SVG)
+    image = Image.open(io.BytesIO(svg_str))
 
     buf = io.BytesIO()
-    svg_img.save(buf, format="PNG")
+    image.save(buf, format="PNG")
     return buf.getvalue()
 
 # ---------------------------------------------------------
