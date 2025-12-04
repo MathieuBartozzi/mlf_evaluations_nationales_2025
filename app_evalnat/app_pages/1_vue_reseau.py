@@ -97,14 +97,25 @@ with st.container(border=True):
         """
         ,unsafe_allow_html=True)
 
+
     with col2:
-        vue = st.segmented_control(
+
+        vue = st.radio(
         "Choisissez la vue à afficher :",
-        ["Répartition", "Vue 3D"],
-        selection_mode="single",
-        default="Répartition"
+        ("Répartition", "Vue 3D"),
+        horizontal=True,
+        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
+        key="vue", # Une clé unique suffit
     )
-        if vue =="Répartition":
-            plot_pie_clusters(df_feat)
-        else:
-            plot_pca_3d(df_pca, ecole_selectionnee=None,palette=None)
+
+
+        # --- Fragment pour isoler l'affichage des graphiques ---
+        @st.fragment
+        def afficher_graphique(vue_selectionnee):
+            if vue_selectionnee == "Répartition":
+                plot_pie_clusters(df_feat)
+            else:
+                plot_pca_3d(df_pca, ecole_selectionnee=None, palette=None)
+
+        # --- Appel du fragment ---
+        afficher_graphique(vue)

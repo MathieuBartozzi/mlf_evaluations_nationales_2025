@@ -44,7 +44,7 @@ def get_moyenne_et_delta(df_global, df_ecole, matiere=None):
     delta = moy_ecole - moy_reseau
     return moy_ecole, delta
 
-
+@st.fragment
 def heatmap_scores_par_reseau(df, ordre_niveaux):
     """Affiche une heatmap des scores moyens par réseau et par niveau."""
     colonnes_requises = {'Niveau', 'Matière', 'Valeur', 'Réseau'}
@@ -54,11 +54,13 @@ def heatmap_scores_par_reseau(df, ordre_niveaux):
 
     df_filtre = df[df["Matière"].isin(["Français", "Mathématiques"])].copy()
 
-    matiere = st.segmented_control(
-        "Choisissez la matière à afficher :",
-        ["Français", "Mathématiques"],
-        selection_mode="single",
-        default="Français"
+   # @st.fragment
+    matiere = st.radio(
+        "Choisissez la matière :",
+        ("Français", "Mathématiques"),
+        horizontal=True,
+        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
+        key="afficher_top_bottom_evolutions", # Une clé unique suffit
     )
 
     grouped = (
@@ -164,7 +166,7 @@ def plot_line_chart(df, palette, ordre_niveaux):
 
     st.plotly_chart(fig, width='stretch')
 
-
+@st.fragment
 def afficher_top_bottom(df):
     """Affiche Top 3 et Bottom 3 selon la valeur moyenne, par niveau d’analyse choisi."""
     colonnes_requises = {'Domaine', 'Compétence', 'Valeur'}
@@ -172,18 +174,16 @@ def afficher_top_bottom(df):
         st.error("Le DataFrame doit contenir les colonnes : Nom_ecole, Domaine, Compétence, Valeur.")
         return
 
-    labels = {"Domaine": "Domaine", "Compétence": "Compétence"}
-
-    choix_label = st.segmented_control(
-        "Choisissez le niveau d'analyse :",
-        list(labels.keys()),
-        selection_mode="single",
-        default="Domaine"
+    # @st.fragment
+    choix_label = st.radio(
+        "Sélectionnez le niveau d'analyse :", # Ajout d'un label visible pour meilleure UX
+        ("Domaine", "Compétence"),
+        horizontal=True,
+        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
+        key="afficher_top_bottom", # Une clé unique suffit
     )
 
-    choix = labels[choix_label]
-
-    grouped = df.groupby(choix, as_index=False)["Valeur"].mean().round(2)
+    grouped = df.groupby(choix_label, as_index=False)["Valeur"].mean().round(2)
     grouped = grouped.sort_values(by="Valeur", ascending=False)
 
     top3 = grouped.head(3).reset_index(drop=True)
@@ -194,6 +194,9 @@ def afficher_top_bottom(df):
 
     st.write(f"**Bottom 3 {choix_label.lower()}s**")
     st.dataframe(bottom3, width='stretch')
+
+
+
 
 
 
@@ -356,12 +359,22 @@ def plot_radar_domaine(df_ecole, df_global, ecole_selectionnee, palette):
 
     st.plotly_chart(fig, width='stretch')
 
-
+@st.fragment
 def plot_heatmap_competences(df_ecole,ordre_niveaux):
     """Affiche la carte de chaleur des compétences selon le niveau."""
-    matiere = st.segmented_control(
-        "Choisissez la matière :", ["Français", "Mathématiques"], default="Français"
+    # matiere = st.segmented_control(
+    #     "Choisissez la matière :", ["Français", "Mathématiques"], default="Français"
+    # )
+    # if matiere is None:
+    #     matiere = "Français"
+    matiere = st.radio(
+        "Choisissez la matière :", # Ajout d'un label visible pour meilleure UX
+        ("Français", "Mathématiques"),
+        horizontal=True,
+        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
+        key="plot_heatmap_competences", # Une clé unique suffit
     )
+
 
     df_mat = df_ecole[df_ecole["Matière"] == matiere]
 
@@ -454,7 +467,7 @@ def plot_scatter_comparatif(df, ecole_selectionnee,palette):
 # --------------------------------------------
 # Pie chart distribution des clusters
 # --------------------------------------------
-
+@st.fragment
 def plot_pie_clusters(df_feat):
     cluster_counts = df_feat["cluster"].value_counts().sort_index()
 
@@ -485,7 +498,7 @@ def plot_pie_clusters(df_feat):
 # --------------------------------------------
 # PCA 3D avec point de l'établissement surligné
 # --------------------------------------------
-
+@st.fragment
 def plot_pca_3d(df_pca, ecole_selectionnee,palette):
     df_pca = df_pca.copy()
     df_pca["cluster_str"] = df_pca["cluster"].astype(str)
@@ -593,23 +606,34 @@ def square(color):
 # --------------------------------------------
 # page 3
 # --------------------------------------------
-
+@st.fragment
 def vue_top_bottom_matiere(df, matiere, n=5):
     key_segment = f"seg_{matiere}"   # 🔥 clé unique
 
     options_map = {
-        "+": ":material/add:  + maîtrisées",
-        "-": ":material/remove:  - maîtrisées",
+        "+": ":material/add:  maîtrisées",
+        "-": ":material/remove:  maîtrisées",
     }
 
-    choix = st.segmented_control(
+    # choix = st.segmented_control(
+    #     f"{matiere}",
+    #     options=options_map.keys(),
+    #     format_func=lambda o: options_map[o],
+    #     selection_mode="single",
+    #     default="+",
+    #     key=key_segment,   # 🔑 clé unique obligatoire
+    # )
+    choix = st.radio(
         f"{matiere}",
         options=options_map.keys(),
         format_func=lambda o: options_map[o],
-        selection_mode="single",
-        default="+",
-        key=key_segment,   # 🔑 clé unique obligatoire
+        horizontal=True,
+        key=key_segment,   # clé unique → essentiel
     )
+
+
+
+
 
     df_mat = df[df["Matière"] == matiere]
     df_mean = df_mat.groupby("Compétence")["Valeur"].mean().reset_index()
@@ -893,7 +917,7 @@ def plot_scatter_dispersion(df, palette, seuil_std=12, height=520):
 
 
 
-
+@st.fragment
 def afficher_top_bottom_evolutions(df):
     """Affiche Top 3 et Bottom 3 selon l'évolution moyenne (slope),
     avec choix de la matière (Français / Maths), uniquement par Compétence."""
@@ -903,13 +927,23 @@ def afficher_top_bottom_evolutions(df):
         st.error("Le DataFrame doit contenir les colonnes : Matière, Compétence, slope.")
         return
 
-    # Choix matière
-    matiere = st.segmented_control(
+    # # Choix matière
+    # matiere = st.segmented_control(
+    #     "Choisissez la matière :",
+    #     ["Français", "Mathématiques"],
+    #     selection_mode="single",
+    #     default="Français"
+    # )
+
+    # @st.fragment
+    matiere = st.radio(
         "Choisissez la matière :",
-        ["Français", "Mathématiques"],
-        selection_mode="single",
-        default="Français"
+        ("Français", "Mathématiques"),
+        horizontal=True,
+        # label_visibility="collapsed", # Optionnel si vous voulez cacher le label ci-dessus
+        key="afficher_top_bottom_evolutions", # Une clé unique suffit
     )
+
 
     # Filtre matière
     df_filtre = df[df["Matière"] == matiere]
