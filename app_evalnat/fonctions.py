@@ -15,17 +15,24 @@ import plotly.io as pio
 from fpdf import FPDF
 from fonctions_viz import *
 
+import io
+import json
 import matplotlib.pyplot as plt
+from plotly.io import from_json
 
-def fig_to_png(fig, scale=3):
-    # Convert Plotly figure to static image via Matplotlib (no Chrome needed)
-    img_bytes = pio.to_image(
-        fig,
-        format="png",
-        scale=scale,
-        engine="matplotlib"  # Force renderer that does NOT require Chrome
-    )
-    return img_bytes
+def fig_to_png(fig, dpi=300):
+    # Convertit la figure Plotly → JSON
+    fig_json = fig.to_json()
+
+    # Recrée la figure Matplotlib via un renderer interne
+    fig_mpl = from_json(fig_json).to_matplotlib()
+
+    # Sauvegarde dans un buffer PNG
+    buf = io.BytesIO()
+    fig_mpl.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    plt.close(fig_mpl)
+
+    return buf.getvalue()
 
 # ---------------------------------------------------------
 #   FONCTION  : Générer un rapport d'analyse pour un établissement
