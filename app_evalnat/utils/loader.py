@@ -11,7 +11,7 @@ def load_data(file_key: str):
         file_id = st.secrets["google"][file_key]
         url = f"https://drive.google.com/uc?id={file_id}"
         df = pd.read_csv(url)
-                # Conversion automatique des colonnes latitude/longitude si elles existent
+        # Conversion automatique des colonnes latitude/longitude si elles existent
         for col in df.columns:
             if col.lower() in ["lat","long"]:
                 df[col] = (
