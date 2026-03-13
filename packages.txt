@@ -8,7 +8,6 @@ shared-mime-info
 libcairo2
 libxml2
 libjpeg62-turbo
-libpng16-16
 libfreetype6
 fontconfig
 fonts-liberation
