@@ -17,7 +17,7 @@ palette = {
 }
 
 
-ordre_niveaux = ["CP", "CE1", "CE2", "CM1", "CM2"]
+ordre_niveaux = ["CP", "Mi_CP", "CE1", "CE2", "CM1", "CM2"]
 
 CLUSTER_COLORS = {
     0: palette["profil_0"],
