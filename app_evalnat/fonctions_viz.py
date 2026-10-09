@@ -98,25 +98,57 @@ def prepare_map_data(df, df_coordo):
     df_map = df_map.dropna()
     return df_map
 
+# def plot_map(df_map, return_fig=False):
+#     """Affiche la carte interactive des établissements."""
+
+#     fig = px.scatter_mapbox(
+#         df_map,
+#         lat="Lat",
+#         lon="Long",
+#         size="Moyenne",
+#         color="Moyenne",
+#         hover_name="Nom_ecole",
+#         hover_data={"Lat": False, "Long": False, "Moyenne": False, "Moyenne etab": True},
+#         color_continuous_scale="Viridis",
+#         zoom=1,
+#         height=474
+#     )
+
+#     fig.update_layout(
+#         mapbox_style="carto-positron",
+#         mapbox_center={
+#             "lat": df_map["Lat"].mean(),
+#             "lon": df_map["Long"].mean()
+#         },
+#         margin=dict(l=40, r=20, t=10, b=40)
+#     )
+
+#     return show_or_return(fig, return_fig)
+
 def plot_map(df_map, return_fig=False):
     """Affiche la carte interactive des établissements."""
 
-    fig = px.scatter_mapbox(
+    fig = px.scatter_map(
         df_map,
         lat="Lat",
         lon="Long",
         size="Moyenne",
         color="Moyenne",
         hover_name="Nom_ecole",
-        hover_data={"Lat": False, "Long": False, "Moyenne": False, "Moyenne etab": True},
+        hover_data={
+            "Lat": False,
+            "Long": False,
+            "Moyenne": False,
+            "Moyenne etab": True
+        },
         color_continuous_scale="Viridis",
         zoom=1,
         height=474
     )
 
     fig.update_layout(
-        mapbox_style="carto-positron",
-        mapbox_center={
+        map_style="carto-positron",
+        map_center={
             "lat": df_map["Lat"].mean(),
             "lon": df_map["Long"].mean()
         },
