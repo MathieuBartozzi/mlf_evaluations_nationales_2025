@@ -213,7 +213,7 @@ with onglets[1]:
     # ---------------------------------------------------
     # ACTION : GÉNÉRATION DU RAPPORT
     # ---------------------------------------------------
-    if st.button("Générer le rapport", type='primary', icon=":material/wand_stars:"):
+    if st.button("Générer le rapport", type='primary', icon=":material/wand_stars:",disabled=True):
         with st.spinner("🚧 Votre rapport est en cours de création. Merci de patienter un instant ⏳..."):
             # On refiltre pour être sûr d'avoir les bonnes données
             df_ecole = df[df["Nom_ecole"] == ecole_selectionnee]
@@ -237,6 +237,7 @@ with onglets[1]:
 
                 # On recharge la page pour que le bloc d'affichage ci-dessous prenne le relais
                 st.rerun()
+    st.caption("ℹ️ La génération de rapports est temporairement désactivée dans cette version de l'application.")
 
 
     # ---------------------------------------------------
