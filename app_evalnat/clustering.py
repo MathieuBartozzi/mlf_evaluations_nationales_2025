@@ -1,5 +1,5 @@
 # ============================================
-# Fichier : pai_clustering.py
+# Fichier : clustering.py
 # ============================================
 
 import pandas as pd
@@ -24,12 +24,21 @@ def evolution_slope(g):
     slope, _, _, _, _ = linregress(g["niveau_code"], g["Valeur"])
     return slope
 
+# def evolution_spearman(g):
+#     if g["niveau_code"].nunique() < 2:
+#         return np.nan
+#     corr, _ = spearmanr(g["niveau_code"], g["Valeur"])
+#     return corr
+
 def evolution_spearman(g):
-    if g["niveau_code"].nunique() < 2:
+    if (
+        g["niveau_code"].nunique() < 2
+        or g["Valeur"].nunique() < 2
+    ):
         return np.nan
+
     corr, _ = spearmanr(g["niveau_code"], g["Valeur"])
     return corr
-
 
 def delta_first_last(g):
     if g["niveau_code"].nunique() < 2:
